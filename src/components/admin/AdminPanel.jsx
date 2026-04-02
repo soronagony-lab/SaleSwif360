@@ -913,8 +913,25 @@ export function AdminPanel({ onLeave }) {
                       onChange={(e) =>
                         updateSettings({ facebookPixelId: e.target.value })
                       }
-                      placeholder="ex: 123456789012345"
+                      placeholder="ex: 1601177617317072"
+                      inputMode="numeric"
+                      autoComplete="off"
                     />
+                    <p className="mt-1.5 text-xs text-gray-500 leading-relaxed">
+                      ID numérique uniquement (15–16 chiffres), sans espaces. Dans
+                      le{' '}
+                      <a
+                        href="https://business.facebook.com/events_manager2"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-teal-700 underline font-medium"
+                      >
+                        Gestionnaire d’événements Meta
+                      </a>
+                      , ajoutez le domaine du site (ex. sale-swif360.vercel.app)
+                      sous Paramètres du pixel → domaines autorisés, sinon les
+                      événements peuvent rester « en attente ».
+                    </p>
                   </div>
                   <div>
                     <Label className="mb-2 block">Google Analytics (GA4) ID</Label>
@@ -924,15 +941,10 @@ export function AdminPanel({ onLeave }) {
                       placeholder="ex: G-XXXXXXXXXX"
                     />
                   </div>
-                  <Button
-                    type="button"
-                    className="rounded-xl"
-                    onClick={() =>
-                      window.alert('Pixels enregistrés (prototype local).')
-                    }
-                  >
-                    Enregistrer les pixels
-                  </Button>
+                  <p className="text-xs text-gray-500">
+                    Les pixels sont enregistrés automatiquement (synchronisation
+                    serveur sous quelques secondes).
+                  </p>
                 </div>
               </div>
             </div>

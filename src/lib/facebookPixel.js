@@ -9,29 +9,60 @@ function getFbq() {
   return typeof window !== 'undefined' ? window.fbq : undefined
 }
 
+/**
+ * Extrait un ID pixel numérique (15–16 chiffres) depuis la saisie admin.
+ */
 export function resolvePixelId(fromSettings) {
-  const raw = typeof fromSettings === 'string' ? fromSettings.trim() : ''
-  return raw || DEFAULT_FACEBOOK_PIXEL_ID
+  const raw = String(fromSettings ?? '')
+  const digits = raw.replace(/\D/g, '')
+  if (digits.length >= 15 && digits.length <= 16) return digits
+  if (digits.length > 0) return digits
+  return DEFAULT_FACEBOOK_PIXEL_ID
+}
+
+/** Attend que le script Meta ait défini fbq (évite course si le tag existe déjà dans le DOM). */
+function waitForFbq(timeoutMs = 8000) {
+  return new Promise((resolve) => {
+    const t0 = Date.now()
+    const tick = () => {
+      if (typeof window !== 'undefined' && typeof window.fbq === 'function') {
+        resolve(true)
+        return
+      }
+      if (Date.now() - t0 >= timeoutMs) {
+        resolve(false)
+        return
+      }
+      requestAnimationFrame(tick)
+    }
+    tick()
+  })
 }
 
 function injectScript() {
-  if (typeof document === 'undefined') return Promise.resolve()
-  if (document.querySelector(`script[src="${FB_SCRIPT}"]`)) {
-    return Promise.resolve()
+  if (typeof document === 'undefined') {
+    return Promise.resolve(false)
   }
+
+  const existing = document.querySelector(`script[src="${FB_SCRIPT}"]`)
+  if (existing) {
+    return waitForFbq(8000)
+  }
+
   return new Promise((resolve, reject) => {
     const s = document.createElement('script')
     s.async = true
     s.src = FB_SCRIPT
-    s.onload = () => resolve()
+    s.onload = () => {
+      waitForFbq(8000).then(resolve)
+    }
     s.onerror = () => reject(new Error('Facebook Pixel script failed'))
     document.head.appendChild(s)
   })
 }
 
 /**
- * Initialise fbq une fois (init + premier PageView).
- * @param {string} pixelId
+ * Initialise fbq(init) pour l’ID donné. Ré-appelle init si l’ID change (réglages admin).
  */
 export async function initFacebookPixel(pixelId) {
   if (typeof window === 'undefined' || !pixelId) return
@@ -39,15 +70,18 @@ export async function initFacebookPixel(pixelId) {
   if (!loadPromise) {
     loadPromise = injectScript().catch(() => {
       loadPromise = null
+      return false
     })
   }
-  await loadPromise
 
-  if (!window.fbq) return
+  const ready = await loadPromise
+  if (!ready) return
 
-  if (!window._fbPixelInitialized) {
+  if (typeof window.fbq !== 'function') return
+
+  const prev = window._fbPixelId
+  if (prev !== pixelId) {
     window.fbq('init', pixelId)
-    window._fbPixelInitialized = true
     window._fbPixelId = pixelId
   }
 }
