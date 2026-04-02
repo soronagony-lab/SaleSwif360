@@ -29,7 +29,13 @@ import {
 } from '@/lib/facebookPixel'
 
 export function StoreFront({ onEnterAdmin }) {
-  const { products, setOrders, orders, settings } = useShop()
+  const {
+    products,
+    settings,
+    submitOrder,
+    remoteLoading,
+    remoteError,
+  } = useShop()
   const [storePage, setStorePage] = useState('home')
   const [storeBackPage, setStoreBackPage] = useState('home')
   const [currentProduct, setCurrentProduct] = useState(null)
@@ -91,10 +97,9 @@ export function StoreFront({ onEnterAdmin }) {
   }
 
   const handleOrderSubmit = (payload) => {
-    const newOrder = { id: Date.now(), ...payload }
-    setOrders([newOrder, ...orders])
+    const orderId = submitOrder(payload)
     trackPurchase({
-      id: newOrder.id,
+      id: orderId,
       productId: payload.productId,
       productName: payload.productName,
       price: payload.price,
@@ -193,6 +198,17 @@ export function StoreFront({ onEnterAdmin }) {
           </div>
         )}
       </header>
+
+      {remoteLoading && (
+        <div className="bg-teal-50 text-teal-800 text-sm text-center py-2 border-b border-teal-100">
+          Chargement du catalogue depuis le serveur…
+        </div>
+      )}
+      {remoteError && !remoteLoading && (
+        <div className="bg-amber-50 text-amber-900 text-sm text-center py-2 px-4 border-b border-amber-100">
+          Catalogue en mode local (cache). Sync : {remoteError}
+        </div>
+      )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {storePage === 'home' && (

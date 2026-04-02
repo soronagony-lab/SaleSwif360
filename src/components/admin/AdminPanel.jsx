@@ -84,9 +84,9 @@ export function AdminPanel({ onLeave }) {
     products,
     setProducts,
     orders,
-    setOrders,
     settings,
     updateSettings,
+    patchOrderStatus,
   } = useShop()
 
   const handleLogout = async () => {
@@ -121,7 +121,7 @@ export function AdminPanel({ onLeave }) {
   }, [orders])
 
   const updateOrderStatus = (id, newStatus) => {
-    setOrders(orders.map((o) => (o.id === id ? { ...o, status: newStatus } : o)))
+    patchOrderStatus(id, newStatus)
   }
 
   const updateProductStock = (id, delta) => {

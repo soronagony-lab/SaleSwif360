@@ -36,6 +36,15 @@ export function AuthProvider({ children }) {
     refreshSession()
   }, [refreshSession])
 
+  /** Après retour Google / onglet, la session peut être prête un peu plus tard */
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refreshSession()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [refreshSession])
+
   const signIn = useCallback(async (email, password) => {
     if (!insforge) return { error: new Error('InsForge non configuré') }
     const { data, error } = await insforge.auth.signInWithPassword({
@@ -49,7 +58,15 @@ export function AuthProvider({ children }) {
 
   const signUp = useCallback(async (email, password, name) => {
     if (!insforge) return { data: null, error: new Error('InsForge non configuré') }
-    return insforge.auth.signUp({ email, password, name })
+    const origin =
+      typeof window !== 'undefined' ? window.location.origin : undefined
+    const payload = {
+      email,
+      password,
+      name,
+      ...(origin && { options: { emailRedirectTo: `${origin}/` } }),
+    }
+    return insforge.auth.signUp(payload)
   }, [])
 
   const signOut = useCallback(async () => {
@@ -61,9 +78,21 @@ export function AuthProvider({ children }) {
   const verifyEmail = useCallback(async (email, otp) => {
     if (!insforge) return { data: null, error: new Error('InsForge non configuré') }
     const { data, error } = await insforge.auth.verifyEmail({ email, otp })
-    if (!error && data?.accessToken) await refreshSession()
+    if (!error) await refreshSession()
     return { data, error }
   }, [refreshSession])
+
+  const signInWithGoogle = useCallback(async () => {
+    if (!insforge) return { error: new Error('InsForge non configuré') }
+    const redirectTo =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}${window.location.pathname}`
+        : undefined
+    return insforge.auth.signInWithOAuth({
+      provider: 'google',
+      redirectTo,
+    })
+  }, [])
 
   const resendVerification = useCallback(async (email) => {
     if (!insforge) return { data: null, error: new Error('InsForge non configuré') }
@@ -86,6 +115,7 @@ export function AuthProvider({ children }) {
       signOut,
       verifyEmail,
       resendVerification,
+      signInWithGoogle,
     }),
     [
       configured,
@@ -99,6 +129,7 @@ export function AuthProvider({ children }) {
       signOut,
       verifyEmail,
       resendVerification,
+      signInWithGoogle,
     ]
   )
 
