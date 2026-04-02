@@ -2,23 +2,28 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   CheckCircle,
   ChevronLeft,
+  ExternalLink,
+  Leaf,
   Lock,
   Menu,
+  Phone,
   Search,
-  ShoppingBag,
   ShoppingCart,
+  Sparkles,
   TrendingUp,
+  Users,
   X,
 } from 'lucide-react'
 import { useShop } from '@/context/ShopContext'
 import { ProductCard } from '@/components/ProductCard'
 import { ProductImage } from '@/components/ProductImage'
-import { formatPrice } from '@/lib/format'
+import { formatPrice, normalizePhoneForWhatsApp } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { OrderModal } from '@/components/store/OrderModal'
 import { AdminAuthModal } from '@/components/admin/AdminAuthModal'
 import { SeoHead } from '@/components/SeoHead'
+import { BRAND } from '@/lib/brand'
 import {
   initFacebookPixel,
   resolvePixelId,
@@ -47,6 +52,14 @@ export function StoreFront({ onEnterAdmin }) {
   const [pinOpen, setPinOpen] = useState(false)
 
   const pixelId = resolvePixelId(settings.facebookPixelId)
+  const waDigits = normalizePhoneForWhatsApp(settings.whatsApp || BRAND.businessPhone)
+  const waLinkMlm = `https://wa.me/${waDigits}?text=${encodeURIComponent(
+    `Bonjour ${BRAND.name}, je souhaite en savoir plus sur l'opportunité business Forever Living Products.`
+  )}`
+  const waLinkGeneral = `https://wa.me/${waDigits}?text=${encodeURIComponent(
+    `Bonjour ${BRAND.name}, je vous contacte depuis votre site.`
+  )}`
+  const telHref = `tel:${String(settings.whatsApp || BRAND.businessPhone).replace(/\s/g, '')}`
 
   useEffect(() => {
     let cancelled = false
@@ -106,43 +119,51 @@ export function StoreFront({ onEnterAdmin }) {
     })
   }
 
+  const navBtn = (active) =>
+    `hover:text-emerald-700 transition-colors font-medium border-b-2 pb-0.5 ${
+      active
+        ? 'text-emerald-800 border-amber-500'
+        : 'text-stone-600 border-transparent'
+    }`
+
   return (
-    <div className="min-h-screen bg-gray-50 font-sans pb-20 md:pb-0">
+    <div className="min-h-screen bg-stone-50 font-sans pb-20 md:pb-0 text-stone-900">
       <SeoHead
         storePage={storePage}
         currentProduct={currentProduct}
         shopName={settings.shopName}
       />
-      <header className="bg-white sticky top-0 z-40 shadow-sm border-b border-gray-100">
+      <header className="bg-white/95 backdrop-blur sticky top-0 z-40 shadow-sm border-b border-emerald-100/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-16 md:h-[4.25rem]">
             <button
               type="button"
-              className="flex items-center space-x-1 cursor-pointer bg-transparent border-0 p-0"
+              className="flex items-center gap-2 cursor-pointer bg-transparent border-0 p-0 text-left"
               onClick={() => {
                 setStorePage('home')
                 setCurrentProduct(null)
               }}
             >
-              <ShoppingBag className="h-7 w-7 text-orange-500" />
-              <span className="font-bold text-2xl tracking-tight flex items-baseline">
-                <span className="text-orange-500">J&apos;</span>
-                <span className="text-teal-600">achète</span>
-                <span className="text-orange-500 text-lg">.ci</span>
-              </span>
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-700 to-emerald-900 text-white shadow-md">
+                <Leaf className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="leading-tight">
+                <span className="block font-bold text-lg md:text-xl tracking-tight text-emerald-900">
+                  {BRAND.name}
+                </span>
+                <span className="block text-[10px] md:text-xs font-medium text-amber-700 uppercase tracking-widest">
+                  {BRAND.tagline}
+                </span>
+              </div>
             </button>
-            <nav className="hidden md:flex space-x-8 items-center">
+            <nav className="hidden md:flex space-x-6 lg:space-x-10 items-center">
               <button
                 type="button"
                 onClick={() => {
                   setStorePage('home')
                   setCurrentProduct(null)
                 }}
-                className={`hover:text-teal-600 transition-colors font-medium border-b-2 pb-0.5 ${
-                  storePage === 'home' && !currentProduct
-                    ? 'text-teal-600 border-teal-600'
-                    : 'text-gray-600 border-transparent'
-                }`}
+                className={navBtn(storePage === 'home' && !currentProduct)}
               >
                 Accueil
               </button>
@@ -152,18 +173,24 @@ export function StoreFront({ onEnterAdmin }) {
                   setStorePage('catalog')
                   setCurrentProduct(null)
                 }}
-                className={`hover:text-teal-600 transition-colors font-medium border-b-2 pb-0.5 ${
-                  storePage === 'catalog'
-                    ? 'text-teal-600 border-teal-600'
-                    : 'text-gray-600 border-transparent'
-                }`}
+                className={navBtn(storePage === 'catalog')}
               >
-                Catalogue
+                Boutique
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStorePage('opportunity')
+                  setCurrentProduct(null)
+                }}
+                className={navBtn(storePage === 'opportunity')}
+              >
+                Opportunité
               </button>
             </nav>
             <button
               type="button"
-              className="md:hidden p-2 text-teal-700"
+              className="md:hidden p-2 text-emerald-800"
               aria-label="Menu"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
@@ -172,7 +199,7 @@ export function StoreFront({ onEnterAdmin }) {
           </div>
         </div>
         {isMenuOpen && (
-          <div className="md:hidden bg-white border-b px-4 py-4 space-y-3 shadow-lg absolute w-full z-50">
+          <div className="md:hidden bg-white border-b border-emerald-100 px-4 py-4 space-y-3 shadow-lg absolute w-full z-50">
             <button
               type="button"
               onClick={() => {
@@ -180,7 +207,7 @@ export function StoreFront({ onEnterAdmin }) {
                 setCurrentProduct(null)
                 setIsMenuOpen(false)
               }}
-              className="block w-full text-left px-4 py-3 rounded-xl font-medium text-gray-700 bg-gray-50 hover:bg-teal-50 hover:text-teal-700"
+              className="block w-full text-left px-4 py-3 rounded-xl font-medium text-stone-700 bg-stone-50 hover:bg-emerald-50 hover:text-emerald-900"
             >
               Accueil
             </button>
@@ -191,65 +218,106 @@ export function StoreFront({ onEnterAdmin }) {
                 setCurrentProduct(null)
                 setIsMenuOpen(false)
               }}
-              className="block w-full text-left px-4 py-3 rounded-xl font-medium text-gray-700 bg-gray-50 hover:bg-teal-50 hover:text-teal-700"
+              className="block w-full text-left px-4 py-3 rounded-xl font-medium text-stone-700 bg-stone-50 hover:bg-emerald-50 hover:text-emerald-900"
             >
-              Catalogue complet
+              Boutique
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStorePage('opportunity')
+                setCurrentProduct(null)
+                setIsMenuOpen(false)
+              }}
+              className="block w-full text-left px-4 py-3 rounded-xl font-medium text-stone-700 bg-stone-50 hover:bg-amber-50 hover:text-amber-900"
+            >
+              Opportunité business
             </button>
           </div>
         )}
       </header>
 
       {remoteLoading && (
-        <div className="bg-teal-50 text-teal-800 text-sm text-center py-2 border-b border-teal-100">
+        <div className="bg-emerald-50 text-emerald-900 text-sm text-center py-2 border-b border-emerald-100">
           Chargement du catalogue depuis le serveur…
         </div>
       )}
       {remoteError && !remoteLoading && (
-        <div className="bg-amber-50 text-amber-900 text-sm text-center py-2 px-4 border-b border-amber-100">
+        <div className="bg-amber-50 text-amber-950 text-sm text-center py-2 px-4 border-b border-amber-100">
           Catalogue en mode local (cache). Sync : {remoteError}
         </div>
       )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {storePage === 'home' && (
-          <div className="space-y-10">
-            <div className="relative bg-teal-700 rounded-3xl overflow-hidden shadow-lg">
-              <div className="absolute inset-0 bg-gradient-to-r from-teal-900 to-transparent opacity-80 z-10" />
+          <div className="space-y-12 md:space-y-16">
+            <div className="relative rounded-3xl overflow-hidden shadow-xl ring-1 ring-emerald-900/10">
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-950 via-emerald-900/85 to-transparent z-10" />
               <img
-                src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200&q=80"
-                alt="Shopping"
-                className="w-full h-64 md:h-96 object-cover object-center"
+                src="https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=1400&q=80"
+                alt="Produits bien-être et nature"
+                className="w-full h-64 md:h-[28rem] object-cover object-center"
               />
-              <div className="absolute inset-0 z-20 flex flex-col justify-center px-6 md:px-16 text-white w-full md:w-2/3">
-                <span className="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full w-max mb-4 uppercase tracking-wider">
-                  Paiement à la livraison
+              <div className="absolute inset-0 z-20 flex flex-col justify-center px-6 md:px-14 max-w-2xl">
+                <span className="inline-flex items-center gap-2 bg-amber-500/95 text-emerald-950 text-xs font-bold px-3 py-1.5 rounded-full w-max mb-4 uppercase tracking-wider shadow">
+                  <Sparkles className="w-3.5 h-3.5" aria-hidden />
+                  {BRAND.hero.badge}
                 </span>
-                <h1 className="text-3xl md:text-5xl font-extrabold mb-4 leading-tight">
-                  Achetez en ligne,
-                  <br />
-                  sans stress !
+                <h1 className="text-3xl md:text-5xl font-extrabold mb-4 leading-tight text-white drop-shadow-sm whitespace-pre-line">
+                  {BRAND.hero.title}
                 </h1>
-                <p className="text-sm md:text-lg mb-6 text-teal-100 max-w-md">
-                  Découvrez notre sélection de produits tendances. Commandez en 1
-                  clic et payez uniquement à la réception.
+                <p className="text-sm md:text-lg mb-8 text-emerald-50/95 max-w-lg leading-relaxed">
+                  {BRAND.hero.subtitle}
                 </p>
+                <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStorePage('catalog')
+                      setCurrentProduct(null)
+                    }}
+                    className="bg-amber-500 text-emerald-950 font-bold py-3.5 px-8 rounded-full w-max hover:bg-amber-400 transition shadow-lg text-base border-0 cursor-pointer"
+                  >
+                    {BRAND.ctaShop}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStorePage('opportunity')
+                      setCurrentProduct(null)
+                    }}
+                    className="text-white font-semibold py-3 px-6 rounded-full border-2 border-white/40 hover:bg-white/10 transition w-max sm:w-auto text-sm md:text-base"
+                  >
+                    {BRAND.ctaOpportunity}
+                  </button>
+                </div>
+                <p className="mt-6 text-xs text-emerald-200/90 max-w-md">
+                  {BRAND.legalMention} · Paiement à la livraison en Côte
+                  d&apos;Ivoire.
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex flex-col items-start gap-2 mb-4 sm:flex-row sm:items-end sm:justify-between">
+                <h2 className="text-2xl md:text-3xl font-bold text-emerald-950 flex items-center gap-2">
+                  <TrendingUp className="text-amber-600 shrink-0" aria-hidden />
+                  Coups de cœur bien-être
+                </h2>
                 <button
                   type="button"
                   onClick={() => {
                     setStorePage('catalog')
                     setCurrentProduct(null)
                   }}
-                  className="bg-orange-500 text-white font-bold py-3 px-8 rounded-full w-max hover:bg-orange-600 transition shadow-lg text-base md:text-lg border-0 cursor-pointer"
+                  className="text-sm font-semibold text-emerald-700 hover:text-emerald-900 underline-offset-4 hover:underline"
                 >
-                  Voir les offres
+                  Voir toute la boutique
                 </button>
               </div>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <TrendingUp className="text-teal-600 shrink-0" aria-hidden />
-                Les plus populaires
-              </h2>
+              <p className="text-stone-600 text-sm mb-6 max-w-2xl">
+                {BRAND.salesPitch}
+              </p>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                 {popularProducts.map((product) => (
                   <ProductCard
@@ -260,10 +328,95 @@ export function StoreFront({ onEnterAdmin }) {
                 ))}
               </div>
               {popularProducts.length === 0 && (
-                <p className="text-gray-500 text-center py-8">
+                <p className="text-stone-500 text-center py-8">
                   Aucun produit en stock pour le moment.
                 </p>
               )}
+            </div>
+
+            <section className="rounded-3xl bg-gradient-to-br from-emerald-900 to-emerald-950 text-white p-8 md:p-12 shadow-xl">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+                <div className="max-w-xl">
+                  <p className="text-amber-300/90 text-xs font-bold uppercase tracking-widest mb-2">
+                    Deuxième plan — développement
+                  </p>
+                  <h2 className="text-2xl md:text-3xl font-bold mb-3 flex items-center gap-2">
+                    <Users className="w-8 h-8 text-amber-400 shrink-0" />
+                    {BRAND.mlm.title}
+                  </h2>
+                  <p className="text-emerald-100/95 text-sm md:text-base leading-relaxed">
+                    {BRAND.mlm.subtitle}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 shrink-0">
+                  <a
+                    href={waLinkMlm}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 bg-amber-500 text-emerald-950 font-bold py-3.5 px-6 rounded-2xl hover:bg-amber-400 transition text-center shadow-lg"
+                  >
+                    Parler à un conseiller
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setStorePage('opportunity')}
+                    className="text-emerald-100 font-medium py-2 text-sm underline-offset-4 hover:underline border-0 bg-transparent cursor-pointer"
+                  >
+                    Lire la présentation complète
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {storePage === 'opportunity' && (
+          <div className="max-w-3xl mx-auto space-y-10 pb-8">
+            <div className="text-center space-y-3">
+              <span className="inline-flex items-center gap-2 text-amber-700 font-bold text-xs uppercase tracking-widest">
+                <Users className="w-4 h-4" />
+                Opportunité business
+              </span>
+              <h1 className="text-3xl md:text-4xl font-extrabold text-emerald-950">
+                {BRAND.mlm.title}
+              </h1>
+              <p className="text-stone-600 text-lg leading-relaxed">
+                {BRAND.mlm.intro}
+              </p>
+            </div>
+            <ul className="space-y-4">
+              {BRAND.mlm.bullets.map((line) => (
+                <li
+                  key={line}
+                  className="flex gap-3 bg-white rounded-2xl border border-emerald-100 p-4 shadow-sm"
+                >
+                  <CheckCircle className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
+                  <span className="text-stone-700 leading-relaxed">{line}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="rounded-2xl bg-amber-50 border border-amber-200 p-6 text-amber-950 text-sm leading-relaxed">
+              {BRAND.mlm.disclaimer}
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <a
+                href={waLinkMlm}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 bg-emerald-700 text-white font-bold py-4 px-8 rounded-2xl hover:bg-emerald-800 transition shadow-lg text-center"
+              >
+                {BRAND.mlm.ctaContact}
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  setStorePage('catalog')
+                  setCurrentProduct(null)
+                }}
+                className="inline-flex items-center justify-center font-semibold py-4 px-8 rounded-2xl border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+              >
+                Commander des produits
+              </button>
             </div>
           </div>
         )}
@@ -271,17 +424,22 @@ export function StoreFront({ onEnterAdmin }) {
         {storePage === 'catalog' && (
           <div>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 gap-4">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
-                Tout le catalogue
-              </h2>
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold text-emerald-950">
+                  Boutique en ligne
+                </h2>
+                <p className="text-stone-500 text-sm mt-1">
+                  Beauté, nutrition et bien-être — Forever Living Products®
+                </p>
+              </div>
               <div className="relative w-full md:w-auto">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 w-5 h-5 pointer-events-none" />
                 <Input
                   type="search"
-                  placeholder="Chercher un produit..."
+                  placeholder="Rechercher un produit..."
                   value={catalogQuery}
                   onChange={(e) => setCatalogQuery(e.target.value)}
-                  className="pl-10 w-full md:w-72 shadow-sm"
+                  className="pl-10 w-full md:w-72 shadow-sm border-emerald-100"
                 />
               </div>
             </div>
@@ -295,7 +453,7 @@ export function StoreFront({ onEnterAdmin }) {
               ))}
             </div>
             {filteredCatalog.length === 0 && (
-              <div className="text-center py-20 text-gray-500 bg-white rounded-2xl border border-gray-200">
+              <div className="text-center py-20 text-stone-500 bg-white rounded-2xl border border-emerald-100">
                 Aucun produit ne correspond à votre recherche.
               </div>
             )}
@@ -307,13 +465,13 @@ export function StoreFront({ onEnterAdmin }) {
             <button
               type="button"
               onClick={goBackFromProduct}
-              className="flex items-center text-teal-700 hover:text-teal-900 mb-4 font-medium bg-teal-50 px-3 py-1.5 rounded-lg w-max border-0 cursor-pointer"
+              className="flex items-center text-emerald-800 hover:text-emerald-950 mb-4 font-medium bg-emerald-50 px-3 py-1.5 rounded-lg w-max border-0 cursor-pointer"
             >
               <ChevronLeft className="w-5 h-5 mr-1" /> Retour
             </button>
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row">
-              <div className="w-full md:w-1/2 p-4 md:p-8 bg-gray-50">
-                <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-white shadow-sm border border-gray-100 relative">
+            <div className="bg-white rounded-3xl shadow-sm border border-emerald-100 overflow-hidden flex flex-col md:flex-row">
+              <div className="w-full md:w-1/2 p-4 md:p-8 bg-stone-50">
+                <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-white shadow-sm border border-emerald-100 relative">
                   <ProductImage
                     src={
                       currentProduct.images[activeImageIndex] ||
@@ -332,7 +490,7 @@ export function StoreFront({ onEnterAdmin }) {
                         onClick={() => setActiveImageIndex(idx)}
                         className={`w-20 h-20 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
                           activeImageIndex === idx
-                            ? 'border-teal-500 scale-105 shadow-md'
+                            ? 'border-amber-500 scale-105 shadow-md'
                             : 'border-transparent opacity-70 hover:opacity-100'
                         }`}
                       >
@@ -349,7 +507,7 @@ export function StoreFront({ onEnterAdmin }) {
               <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col">
                 <div className="mb-2">
                   {(currentProduct.stock || 0) > 0 ? (
-                    <span className="bg-teal-100 text-teal-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
+                    <span className="bg-emerald-100 text-emerald-900 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
                       En stock
                     </span>
                   ) : (
@@ -358,17 +516,17 @@ export function StoreFront({ onEnterAdmin }) {
                     </span>
                   )}
                 </div>
-                <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900 mb-2">
+                <h1 className="text-2xl md:text-4xl font-extrabold text-emerald-950 mb-2">
                   {currentProduct.name}
                 </h1>
-                <p className="text-3xl font-black text-orange-500 mb-6">
+                <p className="text-3xl font-black text-amber-600 mb-6">
                   {formatPrice(currentProduct.price)}
                 </p>
                 <div className="mb-8">
-                  <h3 className="text-lg font-bold text-gray-800 mb-2">
+                  <h3 className="text-lg font-bold text-stone-800 mb-2">
                     Description
                   </h3>
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="text-stone-600 leading-relaxed">
                     {currentProduct.detailedDescription ||
                       currentProduct.description}
                   </p>
@@ -381,16 +539,16 @@ export function StoreFront({ onEnterAdmin }) {
                     disabled={(currentProduct.stock || 0) <= 0}
                     onClick={() => openOrder(currentProduct)}
                   >
-                    <ShoppingCart className="w-6 h-6" /> Acheter maintenant
+                    <ShoppingCart className="w-6 h-6" /> Commander maintenant
                   </Button>
-                  <div className="flex items-center justify-center text-sm text-gray-500">
-                    <CheckCircle className="w-4 h-4 mr-1 text-teal-500" />{' '}
+                  <div className="flex items-center justify-center text-sm text-stone-500">
+                    <CheckCircle className="w-4 h-4 mr-1 text-emerald-600" />{' '}
                     Paiement à la livraison
                   </div>
                 </div>
               </div>
             </div>
-            <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-30">
+            <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-emerald-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-30">
               <Button
                 variant="accent"
                 size="lg"
@@ -398,19 +556,53 @@ export function StoreFront({ onEnterAdmin }) {
                 disabled={(currentProduct.stock || 0) <= 0}
                 onClick={() => openOrder(currentProduct)}
               >
-                <ShoppingCart className="w-5 h-5" /> Acheter maintenant
+                <ShoppingCart className="w-5 h-5" /> Commander maintenant
               </Button>
             </div>
           </div>
         )}
       </main>
 
-      <footer className="bg-white border-t border-gray-100 py-6 mt-12 text-center text-sm text-gray-400">
-        <p>© 2026 J&apos;achète.ci — Tous droits réservés.</p>
+      <footer className="bg-white border-t border-emerald-100 py-8 mt-12 text-sm text-stone-600">
+        <div className="max-w-3xl mx-auto px-4 text-center">
+          <p className="font-semibold text-emerald-900">{settings.shopName}</p>
+          <p className="mt-1 text-xs text-stone-400 max-w-md mx-auto">
+            {BRAND.legalMention} · {BRAND.tagline}
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-4 md:gap-8 text-sm">
+            <a
+              href={BRAND.facebookPageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 font-medium text-emerald-800 hover:text-emerald-950 hover:underline"
+            >
+              <ExternalLink className="w-4 h-4 shrink-0" aria-hidden />
+              Facebook — @Solutionflp
+            </a>
+            <a
+              href={telHref}
+              className="inline-flex items-center gap-2 font-medium text-emerald-800 hover:text-emerald-950 hover:underline"
+            >
+              <Phone className="w-4 h-4 shrink-0" aria-hidden />
+              {BRAND.businessPhoneDisplay}
+            </a>
+            <a
+              href={waLinkGeneral}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 font-medium text-emerald-800 hover:text-emerald-950 hover:underline"
+            >
+              WhatsApp
+            </a>
+          </div>
+          <p className="mt-6 text-xs text-stone-400">
+            © {new Date().getFullYear()} {BRAND.name} — Tous droits réservés.
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => setPinOpen(true)}
-          className="mt-2 text-gray-300 hover:text-gray-500 transition-colors border-0 bg-transparent cursor-pointer"
+          className="mt-2 text-stone-300 hover:text-stone-500 transition-colors border-0 bg-transparent cursor-pointer"
           title="Accès partenaire"
         >
           <Lock className="w-4 h-4 mx-auto" />

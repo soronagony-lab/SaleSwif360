@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label'
 import { useAuth } from '@/context/AuthContext'
 import { isAdminEmail, parseAdminEmails } from '@/lib/adminAccess'
 import { formatAuthError } from '@/lib/authErrors'
+import { BRAND } from '@/lib/brand'
 
 function GoogleIcon({ className }) {
   return (
@@ -264,7 +265,7 @@ export function AdminAuthModal({ open, onOpenChange, onSuccess }) {
                   Espace administration
                 </DialogTitle>
                 <DialogDescription className="text-teal-100/90 text-sm text-left mt-1">
-                  J&apos;achète.ci — connexion sécurisée (InsForge)
+                  {BRAND.name} — administration (InsForge)
                 </DialogDescription>
               </div>
             </div>

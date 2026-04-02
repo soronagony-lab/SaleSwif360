@@ -7,7 +7,7 @@ export function ProductCard({ product, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-left bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all group flex flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+      className="w-full text-left bg-white rounded-2xl shadow-sm border border-emerald-100 overflow-hidden hover:shadow-xl transition-all group flex flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
     >
       <div className="relative aspect-square overflow-hidden bg-gray-50">
         <ProductImage
@@ -20,10 +20,10 @@ export function ProductCard({ product, onClick }) {
         <h3 className="font-bold text-gray-800 text-sm md:text-lg mb-1 line-clamp-2 leading-tight">
           {product.name}
         </h3>
-        <span className="font-black text-lg md:text-xl text-orange-500 mt-auto">
+        <span className="font-black text-lg md:text-xl text-amber-600 mt-auto">
           {formatPrice(product.price)}
         </span>
-        <span className="mt-3 w-full bg-teal-50 text-teal-700 group-hover:bg-teal-600 group-hover:text-white font-bold py-2 md:py-2.5 rounded-xl transition-colors flex justify-center items-center text-sm md:text-base border border-teal-100 group-hover:border-teal-600 pointer-events-none">
+        <span className="mt-3 w-full bg-emerald-50 text-emerald-800 group-hover:bg-emerald-700 group-hover:text-white font-bold py-2 md:py-2.5 rounded-xl transition-colors flex justify-center items-center text-sm md:text-base border border-emerald-100 group-hover:border-emerald-700 pointer-events-none">
           <Eye className="w-4 h-4 mr-2" /> Consulter
         </span>
       </div>

@@ -1,4 +1,4 @@
--- Schéma de référence pour J'achète.ci (Supabase / PostgreSQL)
+-- Schéma de référence pour Succès Solution FLP (Supabase / PostgreSQL)
 -- À exécuter dans l’éditeur SQL Supabase si vous migrez hors du prototype local.
 
 create table if not exists public.products (
@@ -27,7 +27,7 @@ create table if not exists public.orders (
 
 create table if not exists public.shop_settings (
   id smallint primary key default 1 check (id = 1),
-  shop_name text default 'J''achète.ci',
+  shop_name text default 'Succès Solution FLP',
   whats_app text,
   relance_message text,
   facebook_pixel_id text,

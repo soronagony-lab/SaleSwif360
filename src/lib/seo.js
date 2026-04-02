@@ -1,18 +1,18 @@
+import { BRAND, DEFAULT_SITE_URL } from '@/lib/brand'
+
 /** URL canonique de prod — surcharge avec VITE_SITE_URL si défini */
 export function getSiteOrigin() {
   if (typeof window !== 'undefined') return window.location.origin
   const fromEnv = import.meta.env.VITE_SITE_URL
   if (fromEnv && typeof fromEnv === 'string') return fromEnv.replace(/\/$/, '')
-  return 'https://jachete.ci'
+  return DEFAULT_SITE_URL
 }
 
 export const SITE_DEFAULTS = {
-  name: "J'achète.ci",
-  tagline: 'Paiement à la livraison en Côte d’Ivoire',
-  description:
-    "Boutique en ligne en Côte d’Ivoire : produits tendance, commande simple, livraison à Abidjan et partout en CI. Payez à la réception — sans carte bancaire.",
-  keywords:
-    "achat en ligne Côte d'Ivoire, e-commerce Abidjan, paiement à la livraison, livraison Abidjan, boutique en ligne CI, J'achète.ci, cash on delivery Côte d'Ivoire",
+  name: BRAND.name,
+  tagline: `${BRAND.tagline} — ${BRAND.legalMention}`,
+  description: BRAND.description,
+  keywords: BRAND.keywords,
   locale: 'fr_CI',
   region: 'CI',
   placename: "Abidjan, Côte d'Ivoire",

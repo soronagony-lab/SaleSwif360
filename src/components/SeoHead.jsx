@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { BRAND } from '@/lib/brand'
 import {
   SITE_DEFAULTS,
   getSiteOrigin,
@@ -8,7 +9,7 @@ import {
 } from '@/lib/seo'
 
 const DEFAULT_OG_IMAGE =
-  'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200&q=80&auto=format'
+  'https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=1200&q=80&auto=format'
 
 function absImageUrl(base, src) {
   if (!src || typeof src !== 'string') return null
@@ -33,9 +34,17 @@ export function SeoHead({ storePage, currentProduct, shopName }) {
     let ogImage = DEFAULT_OG_IMAGE
 
     if (storePage === 'catalog') {
-      title = `Catalogue — ${brand}`
-      description = `Découvrez tout le catalogue ${brand} : achat en ligne en Côte d’Ivoire, livraison et paiement à la réception.`
-      path = '/catalogue'
+      title = `Boutique — ${brand}`
+      description = `Découvrez le catalogue produits beauté, santé et bien-être ${brand} (Forever Living Products). Commande en Côte d’Ivoire, livraison et paiement à la réception.`
+      path = '/boutique'
+    } else if (storePage === 'opportunity') {
+      title = `Opportunité business — ${brand}`
+      {
+        const intro = BRAND.mlm.intro
+        description =
+          intro.length > 155 ? `${intro.slice(0, 152)}…` : intro
+      }
+      path = '/opportunite'
     } else if (storePage === 'product' && currentProduct) {
       const snippet =
         currentProduct.description ||

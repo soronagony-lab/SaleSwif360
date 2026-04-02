@@ -67,9 +67,9 @@ export function OrderModal({
             <p className="text-gray-600 mb-8 text-lg">
               Votre commande a été enregistrée avec succès.
             </p>
-            <div className="bg-orange-50 rounded-2xl p-4 mb-8 w-full border border-orange-100">
-              <p className="text-orange-800 text-sm font-medium flex items-start">
-                <MessageCircle className="w-5 h-5 mr-2 flex-shrink-0 text-orange-500 mt-0.5" />
+            <div className="bg-amber-50 rounded-2xl p-4 mb-8 w-full border border-amber-100">
+              <p className="text-amber-950 text-sm font-medium flex items-start">
+                <MessageCircle className="w-5 h-5 mr-2 flex-shrink-0 text-amber-600 mt-0.5" />
                 Notre équipe va vous contacter très vite sur WhatsApp ou par
                 appel pour confirmer la livraison.
               </p>
@@ -98,15 +98,15 @@ export function OrderModal({
                   <p className="font-bold text-gray-900 text-lg leading-tight">
                     {product.name}
                   </p>
-                  <p className="text-orange-500 font-black text-xl mt-1">
+                  <p className="text-amber-600 font-black text-xl mt-1">
                     {formatPrice(product.price)}
                   </p>
                 </div>
               </div>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="bg-teal-50 border border-teal-100 p-3 rounded-xl flex items-start mb-2">
-                  <AlertCircle className="w-5 h-5 text-teal-600 mr-2 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-teal-800 font-medium">
+                <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-xl flex items-start mb-2">
+                  <AlertCircle className="w-5 h-5 text-emerald-600 mr-2 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-emerald-900 font-medium">
                     Vous ne payez rien maintenant. Payez uniquement à la
                     livraison.
                   </p>

@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
 } from 'react'
+import { flushSync } from 'react-dom'
 import { insforge } from '@/lib/insforgeClient'
 import { isAdminEmail } from '@/lib/adminAccess'
 
@@ -18,15 +19,22 @@ export function AuthProvider({ children }) {
 
   const refreshSession = useCallback(async () => {
     if (!insforge) {
-      setSession(null)
+      flushSync(() => setSession(null))
       setLoading(false)
       return
     }
     try {
-      const { data } = await insforge.auth.getCurrentSession()
-      setSession(data?.session ?? null)
+      const { data, error } = await insforge.auth.getCurrentUser()
+      if (error) {
+        flushSync(() => setSession(null))
+        return
+      }
+      const u = data?.user ?? null
+      flushSync(() => {
+        setSession(u ? { user: u } : null)
+      })
     } catch {
-      setSession(null)
+      flushSync(() => setSession(null))
     } finally {
       setLoading(false)
     }

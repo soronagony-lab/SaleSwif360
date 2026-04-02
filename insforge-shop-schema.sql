@@ -1,4 +1,4 @@
--- SaleSwif360 / J'achète.ci — schéma boutique InsForge (PostgreSQL public)
+-- SaleSwif360 / Succès Solution FLP — schéma boutique InsForge (PostgreSQL public)
 -- Idempotent : à ré-exécuter sans risque (CREATE IF NOT EXISTS / policies DROP IF EXISTS).
 
 create table if not exists public.products (
@@ -27,7 +27,7 @@ create table if not exists public.orders (
 
 create table if not exists public.shop_settings (
   id smallint primary key default 1 check (id = 1),
-  shop_name text default 'J''achète.ci',
+  shop_name text default 'Succès Solution FLP',
   whats_app text,
   relance_message text,
   facebook_pixel_id text,
@@ -71,8 +71,8 @@ create policy "shop_settings_update" on public.shop_settings for update using (t
 insert into public.shop_settings (id, shop_name, whats_app, relance_message)
 values (
   1,
-  'J''achète.ci',
-  '+2250102030405',
-  'Bonjour ! Vous avez regardé nos produits récemment. Profitez de -10% aujourd''hui avec le code PROMO10.'
+  'Succès Solution FLP',
+  '+2250506844901',
+  'Bonjour ! Vous avez consulté nos produits Forever Living chez Succès Solution FLP. Une question ? Répondez à ce message.'
 )
 on conflict (id) do nothing;

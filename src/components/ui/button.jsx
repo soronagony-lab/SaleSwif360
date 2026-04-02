@@ -4,18 +4,18 @@ import { cva } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
-        default: 'bg-teal-600 text-white hover:bg-teal-700 shadow-md',
+        default: 'bg-emerald-700 text-white hover:bg-emerald-800 shadow-md',
         destructive: 'bg-red-500 text-white hover:bg-red-600',
         outline:
-          'border-2 border-teal-200 bg-white text-teal-700 hover:bg-teal-50',
+          'border-2 border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50',
         secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200',
-        ghost: 'hover:bg-teal-50 hover:text-teal-800',
-        accent: 'bg-orange-500 text-white hover:bg-orange-600 shadow-md',
-        link: 'text-teal-600 underline-offset-4 hover:underline',
+        ghost: 'hover:bg-emerald-50 hover:text-emerald-900',
+        accent: 'bg-amber-500 text-emerald-950 hover:bg-amber-400 shadow-md',
+        link: 'text-emerald-700 underline-offset-4 hover:underline',
       },
       size: {
         default: 'h-11 px-5 py-2',

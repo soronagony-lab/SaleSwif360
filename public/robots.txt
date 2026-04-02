@@ -1,5 +1,5 @@
-# J'achète.ci — Côte d'Ivoire
+# Succès Solution FLP — Côte d'Ivoire
 User-agent: *
 Allow: /
 
-# Ajoutez une URL Sitemap ici quand vous en générez une (ex. https://jachete.ci/sitemap.xml)
+# Sitemap : définissez l’URL complète après déploiement (ex. https://votredomaine.ci/sitemap.xml)

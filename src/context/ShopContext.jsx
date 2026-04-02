@@ -11,18 +11,19 @@ import { insforge } from '@/lib/insforgeClient'
 import * as shopApi from '@/lib/shopInsforge'
 import { initialProducts } from '@/data/initialProducts'
 import { useAuth } from '@/context/AuthContext'
+import { BRAND } from '@/lib/brand'
 
 const STORAGE_KEYS = {
-  products: 'jachete_products',
-  orders: 'jachete_orders',
-  settings: 'jachete_settings',
+  products: 'ssflp_products',
+  orders: 'ssflp_orders',
+  settings: 'ssflp_settings',
 }
 
 const defaultSettings = {
-  shopName: "J'achète.ci",
-  whatsApp: '+2250102030405',
+  shopName: BRAND.name,
+  whatsApp: BRAND.businessPhone,
   relanceMessage:
-    "Bonjour ! Vous avez regardé nos produits récemment. Profitez de -10% aujourd'hui avec le code PROMO10.",
+    "Bonjour ! Vous avez consulté nos produits Forever Living chez Succès Solution FLP. Une question sur la nutrition ou les soins ? Répondez à ce message, on vous guide.",
   facebookPixelId: '1601177617317072',
   ga4Id: '',
 }
