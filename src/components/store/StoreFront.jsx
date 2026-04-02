@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  BookOpen,
   CheckCircle,
   ChevronLeft,
   ExternalLink,
   Leaf,
-  Lock,
   Menu,
   Phone,
   Search,
@@ -24,6 +24,8 @@ import { OrderModal } from '@/components/store/OrderModal'
 import { AdminAuthModal } from '@/components/admin/AdminAuthModal'
 import { SeoHead } from '@/components/SeoHead'
 import { BRAND } from '@/lib/brand'
+import { getArticleBySlug } from '@/data/blogArticles'
+import { BlogArticleView, BlogList } from '@/components/store/BlogSection'
 import {
   initFacebookPixel,
   resolvePixelId,
@@ -50,6 +52,7 @@ export function StoreFront({ onEnterAdmin }) {
   const [orderModalOpen, setOrderModalOpen] = useState(false)
   const [orderProduct, setOrderProduct] = useState(null)
   const [pinOpen, setPinOpen] = useState(false)
+  const [blogSlug, setBlogSlug] = useState(null)
 
   const pixelId = resolvePixelId(settings.facebookPixelId)
   const waDigits = normalizePhoneForWhatsApp(settings.whatsApp || BRAND.businessPhone)
@@ -71,7 +74,7 @@ export function StoreFront({ onEnterAdmin }) {
     return () => {
       cancelled = true
     }
-  }, [pixelId, storePage, currentProduct?.id])
+  }, [pixelId, storePage, currentProduct?.id, blogSlug])
 
   useEffect(() => {
     if (storePage !== 'product' || !currentProduct) return
@@ -88,6 +91,11 @@ export function StoreFront({ onEnterAdmin }) {
     if (!q) return products
     return products.filter((p) => p.name.toLowerCase().includes(q))
   }, [products, catalogQuery])
+
+  const resolvedBlogArticle = useMemo(
+    () => (blogSlug ? getArticleBySlug(blogSlug) : null),
+    [blogSlug]
+  )
 
   const goToProduct = (product, fromPage) => {
     setStoreBackPage(fromPage)
@@ -132,6 +140,7 @@ export function StoreFront({ onEnterAdmin }) {
         storePage={storePage}
         currentProduct={currentProduct}
         shopName={settings.shopName}
+        blogSlug={storePage === 'blogArticle' ? blogSlug : null}
       />
       <header className="bg-white/95 backdrop-blur sticky top-0 z-40 shadow-sm border-b border-emerald-100/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -142,6 +151,7 @@ export function StoreFront({ onEnterAdmin }) {
               onClick={() => {
                 setStorePage('home')
                 setCurrentProduct(null)
+                setBlogSlug(null)
               }}
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-700 to-emerald-900 text-white shadow-md">
@@ -162,8 +172,11 @@ export function StoreFront({ onEnterAdmin }) {
                 onClick={() => {
                   setStorePage('home')
                   setCurrentProduct(null)
+                  setBlogSlug(null)
                 }}
-                className={navBtn(storePage === 'home' && !currentProduct)}
+                className={navBtn(
+                  storePage === 'home' && !currentProduct && !blogSlug
+                )}
               >
                 Accueil
               </button>
@@ -172,6 +185,7 @@ export function StoreFront({ onEnterAdmin }) {
                 onClick={() => {
                   setStorePage('catalog')
                   setCurrentProduct(null)
+                  setBlogSlug(null)
                 }}
                 className={navBtn(storePage === 'catalog')}
               >
@@ -180,8 +194,25 @@ export function StoreFront({ onEnterAdmin }) {
               <button
                 type="button"
                 onClick={() => {
+                  setStorePage('blog')
+                  setCurrentProduct(null)
+                  setBlogSlug(null)
+                }}
+                className={navBtn(
+                  storePage === 'blog' || storePage === 'blogArticle'
+                )}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <BookOpen className="w-4 h-4" aria-hidden />
+                  Blog
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
                   setStorePage('opportunity')
                   setCurrentProduct(null)
+                  setBlogSlug(null)
                 }}
                 className={navBtn(storePage === 'opportunity')}
               >
@@ -205,6 +236,7 @@ export function StoreFront({ onEnterAdmin }) {
               onClick={() => {
                 setStorePage('home')
                 setCurrentProduct(null)
+                setBlogSlug(null)
                 setIsMenuOpen(false)
               }}
               className="block w-full text-left px-4 py-3 rounded-xl font-medium text-stone-700 bg-stone-50 hover:bg-emerald-50 hover:text-emerald-900"
@@ -216,6 +248,7 @@ export function StoreFront({ onEnterAdmin }) {
               onClick={() => {
                 setStorePage('catalog')
                 setCurrentProduct(null)
+                setBlogSlug(null)
                 setIsMenuOpen(false)
               }}
               className="block w-full text-left px-4 py-3 rounded-xl font-medium text-stone-700 bg-stone-50 hover:bg-emerald-50 hover:text-emerald-900"
@@ -225,8 +258,21 @@ export function StoreFront({ onEnterAdmin }) {
             <button
               type="button"
               onClick={() => {
+                setStorePage('blog')
+                setCurrentProduct(null)
+                setBlogSlug(null)
+                setIsMenuOpen(false)
+              }}
+              className="block w-full text-left px-4 py-3 rounded-xl font-medium text-stone-700 bg-stone-50 hover:bg-emerald-50 hover:text-emerald-900"
+            >
+              Blog
+            </button>
+            <button
+              type="button"
+              onClick={() => {
                 setStorePage('opportunity')
                 setCurrentProduct(null)
+                setBlogSlug(null)
                 setIsMenuOpen(false)
               }}
               className="block w-full text-left px-4 py-3 rounded-xl font-medium text-stone-700 bg-stone-50 hover:bg-amber-50 hover:text-amber-900"
@@ -368,6 +414,59 @@ export function StoreFront({ onEnterAdmin }) {
               </div>
             </section>
           </div>
+        )}
+
+        {storePage === 'blog' && (
+          <BlogList
+            onOpenArticle={(slug) => {
+              setBlogSlug(slug)
+              setStorePage('blogArticle')
+              window.scrollTo(0, 0)
+            }}
+            onBackHome={() => {
+              setStorePage('home')
+              setBlogSlug(null)
+            }}
+          />
+        )}
+
+        {storePage === 'blogArticle' && blogSlug && (
+          <>
+            {resolvedBlogArticle ? (
+              <BlogArticleView
+                article={resolvedBlogArticle}
+                products={products}
+                onBackToBlog={() => {
+                  setBlogSlug(null)
+                  setStorePage('blog')
+                  window.scrollTo(0, 0)
+                }}
+                onCtaShop={() => {
+                  setBlogSlug(null)
+                  setStorePage('catalog')
+                }}
+                onCtaBusiness={() => {
+                  setBlogSlug(null)
+                  setStorePage('opportunity')
+                }}
+                onGoToProduct={(product) => goToProduct(product, 'blogArticle')}
+                waLinkMlm={waLinkMlm}
+              />
+            ) : (
+              <div className="max-w-lg mx-auto text-center py-16 px-4">
+                <p className="text-stone-600 mb-6">Article introuvable.</p>
+                <Button
+                  variant="default"
+                  onClick={() => {
+                    setBlogSlug(null)
+                    setStorePage('blog')
+                  }}
+                >
+                  Retour au blog
+                </Button>
+              </div>
+            )}
+          </>
         )}
 
         {storePage === 'opportunity' && (
@@ -599,15 +698,23 @@ export function StoreFront({ onEnterAdmin }) {
             © {new Date().getFullYear()} {BRAND.name} — Tous droits réservés.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setPinOpen(true)}
-          className="mt-2 text-stone-300 hover:text-stone-500 transition-colors border-0 bg-transparent cursor-pointer"
-          title="Accès partenaire"
-        >
-          <Lock className="w-4 h-4 mx-auto" />
-        </button>
       </footer>
+
+      {/* Accès discret tableau de bord (partenaires) */}
+      <button
+        type="button"
+        onClick={() => setPinOpen(true)}
+        className="fixed bottom-0 right-0 z-[70] h-7 w-7 sm:h-8 sm:w-8 opacity-[0.07] hover:opacity-35 cursor-pointer border-0 bg-emerald-950/15 rounded-tl-lg"
+        aria-label="Connexion partenaire"
+        title=""
+      />
+      <button
+        type="button"
+        onClick={() => setPinOpen(true)}
+        className="sr-only focus:not-sr-only focus:fixed focus:bottom-4 focus:right-4 focus:z-[80] focus:rounded-lg focus:bg-emerald-800 focus:text-white focus:px-3 focus:py-2 focus:text-sm focus:shadow-lg"
+      >
+        Tableau de bord partenaire
+      </button>
 
       <OrderModal
         open={orderModalOpen}

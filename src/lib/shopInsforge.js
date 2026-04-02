@@ -4,33 +4,6 @@ import { BRAND } from '@/lib/brand'
 
 const TEMP_ID_THRESHOLD = 1_000_000_000_000 // > ~2001 en ms — ids locaux Date.now()
 
-/**
- * Le client PostgREST InsForge envoie d'abord le JWT utilisateur ; s'il est expiré
- * ou invalide, l'API renvoie « Invalid token » sans passer par le refresh HTTP.
- * On nettoie la session puis on réessaie avec la clé anonyme uniquement.
- */
-export function isInvalidTokenError(err) {
-  if (!err) return false
-  const msg = String(err.message ?? err).toLowerCase()
-  const code = String(err.code ?? err.error ?? '')
-  if (msg.includes('invalid token')) return true
-  if (msg.includes('invalid jwt') || msg.includes('jwt expired')) return true
-  if (code === 'INVALID_TOKEN' || code === 'PGRST301') return true
-  if (err.statusCode === 401 && /token|jwt|session/i.test(msg)) return true
-  return false
-}
-
-export async function withInvalidTokenRecovery(insforge, fn, { onSessionCleared } = {}) {
-  try {
-    return await fn()
-  } catch (e) {
-    if (!isInvalidTokenError(e)) throw e
-    await insforge.auth.signOut()
-    if (typeof onSessionCleared === 'function') await onSessionCleared()
-    return fn()
-  }
-}
-
 export async function fetchAllShopRemote(insforge) {
   const [products, orders, settings] = await Promise.all([
     fetchProducts(insforge),

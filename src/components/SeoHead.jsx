@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { BRAND } from '@/lib/brand'
+import { getArticleBySlug } from '@/data/blogArticles'
 import {
   SITE_DEFAULTS,
   getSiteOrigin,
@@ -20,9 +21,11 @@ function absImageUrl(base, src) {
 
 /**
  * Met à jour title + meta pour le SEO (SPA) — ciblage Côte d’Ivoire.
+ * @param {string | null} blogSlug — slug article (page détail blog)
  */
-export function SeoHead({ storePage, currentProduct, shopName }) {
+export function SeoHead({ storePage, currentProduct, shopName, blogSlug }) {
   useEffect(() => {
+    const blogArticle = blogSlug ? getArticleBySlug(blogSlug) : null
     const base = getSiteOrigin()
     const brand = shopName || SITE_DEFAULTS.name
     const defaultTitle = `${brand} — ${SITE_DEFAULTS.tagline}`
@@ -32,8 +35,23 @@ export function SeoHead({ storePage, currentProduct, shopName }) {
     let description = defaultDesc
     let path = '/'
     let ogImage = DEFAULT_OG_IMAGE
+    let keywords = SITE_DEFAULTS.keywords
 
-    if (storePage === 'catalog') {
+    if (blogArticle) {
+      title = `${blogArticle.title} — Blog ${brand}`
+      description =
+        blogArticle.excerpt.length > 155
+          ? `${blogArticle.excerpt.slice(0, 152)}…`
+          : blogArticle.excerpt
+      path = `/blog/${blogArticle.slug}`
+      keywords = `${blogArticle.keywords}, blog ${brand}, Forever Living Côte d'Ivoire`
+      ogImage = blogArticle.heroImage || DEFAULT_OG_IMAGE
+    } else if (storePage === 'blog') {
+      title = `Blog bien-être & business — ${brand}`
+      description = `Articles produits Forever Living, conseils santé naturelle et opportunité de distribution en Côte d'Ivoire. ${defaultDesc.slice(0, 120)}…`
+      path = '/blog'
+      keywords = `${SITE_DEFAULTS.keywords}, blog MLM éthique, conseils aloès, entrepreneuriat bien-être Abidjan`
+    } else if (storePage === 'catalog') {
       title = `Boutique — ${brand}`
       description = `Découvrez le catalogue produits beauté, santé et bien-être ${brand} (Forever Living Products). Commande en Côte d’Ivoire, livraison et paiement à la réception.`
       path = '/boutique'
@@ -61,7 +79,7 @@ export function SeoHead({ storePage, currentProduct, shopName }) {
 
     document.title = title
     setMetaByName('description', description)
-    setMetaByName('keywords', SITE_DEFAULTS.keywords)
+    setMetaByName('keywords', keywords)
     setMetaByName('geo.region', SITE_DEFAULTS.region)
     setMetaByName('geo.placename', SITE_DEFAULTS.placename)
     const gsv = import.meta.env.VITE_GOOGLE_SITE_VERIFICATION
@@ -82,7 +100,7 @@ export function SeoHead({ storePage, currentProduct, shopName }) {
     setMetaByName('twitter:image', ogImage)
 
     setLinkCanonical(`${base}${path}`)
-  }, [storePage, currentProduct, shopName])
+  }, [storePage, currentProduct, shopName, blogSlug])
 
   return null
 }
