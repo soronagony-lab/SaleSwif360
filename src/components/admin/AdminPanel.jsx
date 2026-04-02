@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { parseAdminPath, pathForAdminPage } from '@/lib/adminPaths'
 import {
   Box,
   Edit2,
@@ -79,6 +81,17 @@ function StatCard({ title, value, icon, color }) {
 }
 
 export function AdminPanel({ onLeave }) {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { page: adminPage, invalid: adminPathInvalid } = useMemo(
+    () => parseAdminPath(location.pathname),
+    [location.pathname]
+  )
+
+  useEffect(() => {
+    if (adminPathInvalid) navigate('/admin', { replace: true })
+  }, [adminPathInvalid, navigate])
+
   const { user, signOut } = useAuth()
   const {
     products,
@@ -97,7 +110,6 @@ export function AdminPanel({ onLeave }) {
   const userInitial = user?.email
     ? user.email.slice(0, 2).toUpperCase()
     : 'AD'
-  const [adminPage, setAdminPage] = useState('dashboard')
   const [editingProduct, setEditingProduct] = useState(null)
   const [newProductImages, setNewProductImages] = useState([])
   const [team] = useState([{ id: 1, name: 'Admin Principal', role: 'Propriétaire' }])
@@ -194,44 +206,44 @@ export function AdminPanel({ onLeave }) {
             icon={<LayoutDashboard className="w-5 h-5" />}
             label="Tableau de bord"
             active={adminPage === 'dashboard'}
-            onClick={() => setAdminPage('dashboard')}
+            onClick={() => navigate(pathForAdminPage('dashboard'))}
           />
           <AdminNavLink
             icon={<ShoppingCart className="w-5 h-5" />}
             label="Commandes"
             active={adminPage === 'orders'}
-            onClick={() => setAdminPage('orders')}
+            onClick={() => navigate(pathForAdminPage('orders'))}
             badge={orders.length}
           />
           <AdminNavLink
             icon={<Package className="w-5 h-5" />}
             label="Produits"
             active={adminPage === 'products'}
-            onClick={() => setAdminPage('products')}
+            onClick={() => navigate(pathForAdminPage('products'))}
           />
           <AdminNavLink
             icon={<Users className="w-5 h-5" />}
             label="Clients"
             active={adminPage === 'customers'}
-            onClick={() => setAdminPage('customers')}
+            onClick={() => navigate(pathForAdminPage('customers'))}
           />
           <AdminNavLink
             icon={<Megaphone className="w-5 h-5" />}
             label="Marketing"
             active={adminPage === 'marketing'}
-            onClick={() => setAdminPage('marketing')}
+            onClick={() => navigate(pathForAdminPage('marketing'))}
           />
           <AdminNavLink
             icon={<Truck className="w-5 h-5" />}
             label="Logistique"
             active={adminPage === 'logistics'}
-            onClick={() => setAdminPage('logistics')}
+            onClick={() => navigate(pathForAdminPage('logistics'))}
           />
           <AdminNavLink
             icon={<Settings className="w-5 h-5" />}
             label="Configuration"
             active={adminPage === 'settings'}
-            onClick={() => setAdminPage('settings')}
+            onClick={() => navigate(pathForAdminPage('settings'))}
           />
         </nav>
         <div className="p-4 border-t border-teal-800 hidden md:block space-y-2">
@@ -331,7 +343,7 @@ export function AdminPanel({ onLeave }) {
                     </h3>
                     <button
                       type="button"
-                      onClick={() => setAdminPage('orders')}
+                      onClick={() => navigate(pathForAdminPage('orders'))}
                       className="text-teal-600 text-sm font-medium hover:underline border-0 bg-transparent cursor-pointer p-0"
                     >
                       Voir tout

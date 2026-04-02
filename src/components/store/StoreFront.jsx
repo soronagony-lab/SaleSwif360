@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   BookOpen,
   CheckCircle,
@@ -35,8 +36,13 @@ import {
   trackPurchase,
   trackViewContent,
 } from '@/lib/facebookPixel'
+import {
+  PATHS,
+  backPathForProductNav,
+  parseStoreLocation,
+} from '@/lib/storePaths'
 
-export function StoreFront({ onEnterAdmin }) {
+export function StoreFront() {
   const {
     products,
     settings,
@@ -44,16 +50,21 @@ export function StoreFront({ onEnterAdmin }) {
     remoteLoading,
     remoteError,
   } = useShop()
-  const [storePage, setStorePage] = useState('home')
-  const [storeBackPage, setStoreBackPage] = useState('home')
-  const [currentProduct, setCurrentProduct] = useState(null)
+  const navigate = useNavigate()
+  const location = useLocation()
+  const parsed = useMemo(
+    () => parseStoreLocation(location.pathname, products),
+    [location.pathname, products]
+  )
+  const storePage = parsed.storePage
+  const blogSlug = parsed.blogSlug
+  const currentProduct = parsed.product
+
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [catalogQuery, setCatalogQuery] = useState('')
-  const [activeImageIndex, setActiveImageIndex] = useState(0)
   const [orderModalOpen, setOrderModalOpen] = useState(false)
   const [orderProduct, setOrderProduct] = useState(null)
   const [pinOpen, setPinOpen] = useState(false)
-  const [blogSlug, setBlogSlug] = useState(null)
 
   const pixelId = resolvePixelId(settings.facebookPixelId)
   const waDigits = normalizePhoneForWhatsApp(settings.whatsApp || BRAND.businessPhone)
@@ -78,6 +89,16 @@ export function StoreFront({ onEnterAdmin }) {
   }, [pixelId, storePage, currentProduct?.id, blogSlug])
 
   useEffect(() => {
+    if (parsed.invalid) {
+      navigate(PATHS.home, { replace: true })
+    }
+  }, [parsed.invalid, navigate])
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [location.pathname])
+
+  useEffect(() => {
     if (storePage !== 'product' || !currentProduct) return
     trackViewContent(currentProduct)
   }, [storePage, currentProduct])
@@ -99,17 +120,15 @@ export function StoreFront({ onEnterAdmin }) {
   )
 
   const goToProduct = (product, fromPage) => {
-    setStoreBackPage(fromPage)
-    setCurrentProduct(product)
-    setStorePage('product')
-    setActiveImageIndex(0)
+    const from = backPathForProductNav(fromPage, blogSlug)
+    navigate(PATHS.product(product.id), { state: { from } })
     setIsMenuOpen(false)
     window.scrollTo(0, 0)
   }
 
   const goBackFromProduct = () => {
-    setStorePage(storeBackPage)
-    setCurrentProduct(null)
+    const from = location.state?.from ?? PATHS.catalog
+    navigate(from)
   }
 
   const openOrder = (product) => {
@@ -149,11 +168,7 @@ export function StoreFront({ onEnterAdmin }) {
             <button
               type="button"
               className="flex items-center gap-2 cursor-pointer bg-transparent border-0 p-0 text-left"
-              onClick={() => {
-                setStorePage('home')
-                setCurrentProduct(null)
-                setBlogSlug(null)
-              }}
+              onClick={() => navigate(PATHS.home)}
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-700 to-emerald-900 text-white shadow-md">
                 <Leaf className="h-5 w-5" aria-hidden />
@@ -170,35 +185,21 @@ export function StoreFront({ onEnterAdmin }) {
             <nav className="hidden md:flex space-x-6 lg:space-x-10 items-center">
               <button
                 type="button"
-                onClick={() => {
-                  setStorePage('home')
-                  setCurrentProduct(null)
-                  setBlogSlug(null)
-                }}
-                className={navBtn(
-                  storePage === 'home' && !currentProduct && !blogSlug
-                )}
+                onClick={() => navigate(PATHS.home)}
+                className={navBtn(storePage === 'home')}
               >
                 Accueil
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setStorePage('catalog')
-                  setCurrentProduct(null)
-                  setBlogSlug(null)
-                }}
+                onClick={() => navigate(PATHS.catalog)}
                 className={navBtn(storePage === 'catalog')}
               >
                 Boutique
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setStorePage('blog')
-                  setCurrentProduct(null)
-                  setBlogSlug(null)
-                }}
+                onClick={() => navigate(PATHS.blog)}
                 className={navBtn(
                   storePage === 'blog' || storePage === 'blogArticle'
                 )}
@@ -210,11 +211,7 @@ export function StoreFront({ onEnterAdmin }) {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setStorePage('opportunity')
-                  setCurrentProduct(null)
-                  setBlogSlug(null)
-                }}
+                onClick={() => navigate(PATHS.opportunity)}
                 className={navBtn(storePage === 'opportunity')}
               >
                 Opportunité
@@ -235,9 +232,7 @@ export function StoreFront({ onEnterAdmin }) {
             <button
               type="button"
               onClick={() => {
-                setStorePage('home')
-                setCurrentProduct(null)
-                setBlogSlug(null)
+                navigate(PATHS.home)
                 setIsMenuOpen(false)
               }}
               className="block w-full text-left px-4 py-3 rounded-xl font-medium text-stone-700 bg-stone-50 hover:bg-emerald-50 hover:text-emerald-900"
@@ -247,9 +242,7 @@ export function StoreFront({ onEnterAdmin }) {
             <button
               type="button"
               onClick={() => {
-                setStorePage('catalog')
-                setCurrentProduct(null)
-                setBlogSlug(null)
+                navigate(PATHS.catalog)
                 setIsMenuOpen(false)
               }}
               className="block w-full text-left px-4 py-3 rounded-xl font-medium text-stone-700 bg-stone-50 hover:bg-emerald-50 hover:text-emerald-900"
@@ -259,9 +252,7 @@ export function StoreFront({ onEnterAdmin }) {
             <button
               type="button"
               onClick={() => {
-                setStorePage('blog')
-                setCurrentProduct(null)
-                setBlogSlug(null)
+                navigate(PATHS.blog)
                 setIsMenuOpen(false)
               }}
               className="block w-full text-left px-4 py-3 rounded-xl font-medium text-stone-700 bg-stone-50 hover:bg-emerald-50 hover:text-emerald-900"
@@ -271,9 +262,7 @@ export function StoreFront({ onEnterAdmin }) {
             <button
               type="button"
               onClick={() => {
-                setStorePage('opportunity')
-                setCurrentProduct(null)
-                setBlogSlug(null)
+                navigate(PATHS.opportunity)
                 setIsMenuOpen(false)
               }}
               className="block w-full text-left px-4 py-3 rounded-xl font-medium text-stone-700 bg-stone-50 hover:bg-amber-50 hover:text-amber-900"
@@ -319,20 +308,14 @@ export function StoreFront({ onEnterAdmin }) {
                 <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
                   <button
                     type="button"
-                    onClick={() => {
-                      setStorePage('catalog')
-                      setCurrentProduct(null)
-                    }}
+                    onClick={() => navigate(PATHS.catalog)}
                     className="bg-amber-500 text-emerald-950 font-bold py-3.5 px-8 rounded-full w-max hover:bg-amber-400 transition shadow-lg text-base border-0 cursor-pointer"
                   >
                     {BRAND.ctaShop}
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setStorePage('opportunity')
-                      setCurrentProduct(null)
-                    }}
+                    onClick={() => navigate(PATHS.opportunity)}
                     className="text-white font-semibold py-3 px-6 rounded-full border-2 border-white/40 hover:bg-white/10 transition w-max sm:w-auto text-sm md:text-base"
                   >
                     {BRAND.ctaOpportunity}
@@ -353,10 +336,7 @@ export function StoreFront({ onEnterAdmin }) {
                 </h2>
                 <button
                   type="button"
-                  onClick={() => {
-                    setStorePage('catalog')
-                    setCurrentProduct(null)
-                  }}
+                  onClick={() => navigate(PATHS.catalog)}
                   className="text-sm font-semibold text-emerald-700 hover:text-emerald-900 underline-offset-4 hover:underline"
                 >
                   Voir toute la boutique
@@ -406,7 +386,7 @@ export function StoreFront({ onEnterAdmin }) {
                   </a>
                   <button
                     type="button"
-                    onClick={() => setStorePage('opportunity')}
+                    onClick={() => navigate(PATHS.opportunity)}
                     className="text-emerald-100 font-medium py-2 text-sm underline-offset-4 hover:underline border-0 bg-transparent cursor-pointer"
                   >
                     Lire la présentation complète
@@ -420,14 +400,10 @@ export function StoreFront({ onEnterAdmin }) {
         {storePage === 'blog' && (
           <BlogList
             onOpenArticle={(slug) => {
-              setBlogSlug(slug)
-              setStorePage('blogArticle')
+              navigate(PATHS.blogArticle(slug))
               window.scrollTo(0, 0)
             }}
-            onBackHome={() => {
-              setStorePage('home')
-              setBlogSlug(null)
-            }}
+            onBackHome={() => navigate(PATHS.home)}
           />
         )}
 
@@ -438,18 +414,11 @@ export function StoreFront({ onEnterAdmin }) {
                 article={resolvedBlogArticle}
                 products={products}
                 onBackToBlog={() => {
-                  setBlogSlug(null)
-                  setStorePage('blog')
+                  navigate(PATHS.blog)
                   window.scrollTo(0, 0)
                 }}
-                onCtaShop={() => {
-                  setBlogSlug(null)
-                  setStorePage('catalog')
-                }}
-                onCtaBusiness={() => {
-                  setBlogSlug(null)
-                  setStorePage('opportunity')
-                }}
+                onCtaShop={() => navigate(PATHS.catalog)}
+                onCtaBusiness={() => navigate(PATHS.opportunity)}
                 onGoToProduct={(product) => goToProduct(product, 'blogArticle')}
                 waLinkMlm={waLinkMlm}
               />
@@ -458,10 +427,7 @@ export function StoreFront({ onEnterAdmin }) {
                 <p className="text-stone-600 mb-6">Article introuvable.</p>
                 <Button
                   variant="default"
-                  onClick={() => {
-                    setBlogSlug(null)
-                    setStorePage('blog')
-                  }}
+                  onClick={() => navigate(PATHS.blog)}
                 >
                   Retour au blog
                 </Button>
@@ -509,10 +475,7 @@ export function StoreFront({ onEnterAdmin }) {
               </a>
               <button
                 type="button"
-                onClick={() => {
-                  setStorePage('catalog')
-                  setCurrentProduct(null)
-                }}
+                onClick={() => navigate(PATHS.catalog)}
                 className="inline-flex items-center justify-center font-semibold py-4 px-8 rounded-2xl border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
               >
                 Commander des produits
@@ -560,107 +523,22 @@ export function StoreFront({ onEnterAdmin }) {
           </div>
         )}
 
-        {storePage === 'product' && currentProduct && (
-          <div>
-            <button
-              type="button"
-              onClick={goBackFromProduct}
-              className="flex items-center text-emerald-800 hover:text-emerald-950 mb-4 font-medium bg-emerald-50 px-3 py-1.5 rounded-lg w-max border-0 cursor-pointer"
-            >
-              <ChevronLeft className="w-5 h-5 mr-1" /> Retour
-            </button>
-            <div className="bg-white rounded-3xl shadow-sm border border-emerald-100 overflow-hidden flex flex-col md:flex-row">
-              <div className="w-full md:w-1/2 p-4 md:p-8 bg-stone-50">
-                <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-white shadow-sm border border-emerald-100 relative">
-                  <ProductImage
-                    src={
-                      currentProduct.images[activeImageIndex] ||
-                      currentProduct.images[0]
-                    }
-                    alt={currentProduct.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                {currentProduct.images.length > 1 && (
-                  <div className="flex gap-3 overflow-x-auto pb-2">
-                    {currentProduct.images.map((img, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setActiveImageIndex(idx)}
-                        className={`w-20 h-20 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
-                          activeImageIndex === idx
-                            ? 'border-amber-500 scale-105 shadow-md'
-                            : 'border-transparent opacity-70 hover:opacity-100'
-                        }`}
-                      >
-                        <ProductImage
-                          src={img}
-                          alt={`Miniature ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col">
-                <div className="mb-2">
-                  {(currentProduct.stock || 0) > 0 ? (
-                    <span className="bg-emerald-100 text-emerald-900 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
-                      En stock
-                    </span>
-                  ) : (
-                    <span className="bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
-                      Rupture
-                    </span>
-                  )}
-                </div>
-                <h1 className="text-2xl md:text-4xl font-extrabold text-emerald-950 mb-2">
-                  {currentProduct.name}
-                </h1>
-                <p className="text-3xl font-black text-amber-600 mb-6">
-                  {formatPrice(currentProduct.price)}
-                </p>
-                <div className="mb-8">
-                  <h3 className="text-lg font-bold text-stone-800 mb-2">
-                    Description
-                  </h3>
-                  <p className="text-stone-600 leading-relaxed">
-                    {currentProduct.detailedDescription ||
-                      currentProduct.description}
-                  </p>
-                </div>
-                <div className="mt-auto space-y-4 hidden md:block">
-                  <Button
-                    variant="accent"
-                    size="lg"
-                    className="w-full rounded-xl py-8 text-lg"
-                    disabled={(currentProduct.stock || 0) <= 0}
-                    onClick={() => openOrder(currentProduct)}
-                  >
-                    <ShoppingCart className="w-6 h-6" /> Commander maintenant
-                  </Button>
-                  <div className="flex items-center justify-center text-sm text-stone-500">
-                    <CheckCircle className="w-4 h-4 mr-1 text-emerald-600" />{' '}
-                    Paiement à la livraison
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-emerald-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-30">
-              <Button
-                variant="accent"
-                size="lg"
-                className="w-full rounded-xl py-7 text-lg"
-                disabled={(currentProduct.stock || 0) <= 0}
-                onClick={() => openOrder(currentProduct)}
-              >
-                <ShoppingCart className="w-5 h-5" /> Commander maintenant
+        {storePage === 'product' &&
+          (currentProduct ? (
+            <StoreProductDetailView
+              key={currentProduct.id}
+              product={currentProduct}
+              onBack={goBackFromProduct}
+              onOrder={openOrder}
+            />
+          ) : (
+            <div className="max-w-lg mx-auto text-center py-16 px-4">
+              <p className="text-stone-600 mb-6">Ce produit n&apos;existe pas ou n&apos;est plus au catalogue.</p>
+              <Button variant="default" onClick={() => navigate(PATHS.catalog)}>
+                Voir la boutique
               </Button>
             </div>
-          </div>
-        )}
+          ))}
       </main>
 
       <footer className="bg-white border-t border-emerald-100 py-8 mt-12 text-sm text-stone-600">
@@ -721,8 +599,111 @@ export function StoreFront({ onEnterAdmin }) {
       <AdminAuthModal
         open={pinOpen}
         onOpenChange={setPinOpen}
-        onSuccess={onEnterAdmin}
+        onSuccess={() => navigate(PATHS.admin)}
       />
+    </div>
+  )
+}
+
+function StoreProductDetailView({ product, onBack, onOrder }) {
+  const [activeImageIndex, setActiveImageIndex] = useState(0)
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onBack}
+        className="flex items-center text-emerald-800 hover:text-emerald-950 mb-4 font-medium bg-emerald-50 px-3 py-1.5 rounded-lg w-max border-0 cursor-pointer"
+      >
+        <ChevronLeft className="w-5 h-5 mr-1" /> Retour
+      </button>
+      <div className="bg-white rounded-3xl shadow-sm border border-emerald-100 overflow-hidden flex flex-col md:flex-row">
+        <div className="w-full md:w-1/2 p-4 md:p-8 bg-stone-50">
+          <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-white shadow-sm border border-emerald-100 relative">
+            <ProductImage
+              src={
+                product.images[activeImageIndex] || product.images[0]
+              }
+              alt={product.name}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          {product.images.length > 1 && (
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {product.images.map((img, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setActiveImageIndex(idx)}
+                  className={`w-20 h-20 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
+                    activeImageIndex === idx
+                      ? 'border-amber-500 scale-105 shadow-md'
+                      : 'border-transparent opacity-70 hover:opacity-100'
+                  }`}
+                >
+                  <ProductImage
+                    src={img}
+                    alt={`Miniature ${idx + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col">
+          <div className="mb-2">
+            {(product.stock || 0) > 0 ? (
+              <span className="bg-emerald-100 text-emerald-900 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
+                En stock
+              </span>
+            ) : (
+              <span className="bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
+                Rupture
+              </span>
+            )}
+          </div>
+          <h1 className="text-2xl md:text-4xl font-extrabold text-emerald-950 mb-2">
+            {product.name}
+          </h1>
+          <p className="text-3xl font-black text-amber-600 mb-6">
+            {formatPrice(product.price)}
+          </p>
+          <div className="mb-8">
+            <h3 className="text-lg font-bold text-stone-800 mb-2">
+              Description
+            </h3>
+            <p className="text-stone-600 leading-relaxed">
+              {product.detailedDescription || product.description}
+            </p>
+          </div>
+          <div className="mt-auto space-y-4 hidden md:block">
+            <Button
+              variant="accent"
+              size="lg"
+              className="w-full rounded-xl py-8 text-lg"
+              disabled={(product.stock || 0) <= 0}
+              onClick={() => onOrder(product)}
+            >
+              <ShoppingCart className="w-6 h-6" /> Commander maintenant
+            </Button>
+            <div className="flex items-center justify-center text-sm text-stone-500">
+              <CheckCircle className="w-4 h-4 mr-1 text-emerald-600" /> Paiement
+              à la livraison
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-emerald-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-30">
+        <Button
+          variant="accent"
+          size="lg"
+          className="w-full rounded-xl py-7 text-lg"
+          disabled={(product.stock || 0) <= 0}
+          onClick={() => onOrder(product)}
+        >
+          <ShoppingCart className="w-5 h-5" /> Commander maintenant
+        </Button>
+      </div>
     </div>
   )
 }
