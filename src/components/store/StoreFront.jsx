@@ -17,7 +17,7 @@ import { formatPrice } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { OrderModal } from '@/components/store/OrderModal'
-import { AdminPinModal } from '@/components/store/AdminPinModal'
+import { AdminAuthModal } from '@/components/admin/AdminAuthModal'
 import { SeoHead } from '@/components/SeoHead'
 import {
   initFacebookPixel,
@@ -410,7 +410,7 @@ export function StoreFront({ onEnterAdmin }) {
         product={orderProduct}
         onSubmitOrder={handleOrderSubmit}
       />
-      <AdminPinModal
+      <AdminAuthModal
         open={pinOpen}
         onOpenChange={setPinOpen}
         onSuccess={onEnterAdmin}

@@ -1,14 +1,23 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { AuthProvider, useAuth } from '@/context/AuthContext'
 import { ShopProvider } from '@/context/ShopContext'
 import { StoreFront } from '@/components/store/StoreFront'
 import { AdminPanel } from '@/components/admin/AdminPanel'
 
 function AppShell() {
   const [view, setView] = useState('store')
+  const { user, isAdmin, loading: authLoading } = useAuth()
+
+  const effectiveView = useMemo(() => {
+    if (view !== 'admin') return view
+    if (authLoading) return 'store'
+    if (!user || !isAdmin) return 'store'
+    return 'admin'
+  }, [view, authLoading, user, isAdmin])
 
   return (
     <>
-      {view === 'store' ? (
+      {effectiveView === 'store' ? (
         <StoreFront onEnterAdmin={() => setView('admin')} />
       ) : (
         <AdminPanel onLeave={() => setView('store')} />
@@ -19,8 +28,10 @@ function AppShell() {
 
 export default function App() {
   return (
-    <ShopProvider>
-      <AppShell />
-    </ShopProvider>
+    <AuthProvider>
+      <ShopProvider>
+        <AppShell />
+      </ShopProvider>
+    </AuthProvider>
   )
 }

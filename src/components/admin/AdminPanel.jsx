@@ -16,9 +16,11 @@ import {
   Trash2,
   TrendingUp,
   Truck,
+  LogOut,
   User,
   Users,
 } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 import { useShop } from '@/context/ShopContext'
 import { ProductImage } from '@/components/ProductImage'
 import { Button } from '@/components/ui/button'
@@ -77,6 +79,7 @@ function StatCard({ title, value, icon, color }) {
 }
 
 export function AdminPanel({ onLeave }) {
+  const { user, signOut } = useAuth()
   const {
     products,
     setProducts,
@@ -85,6 +88,15 @@ export function AdminPanel({ onLeave }) {
     settings,
     updateSettings,
   } = useShop()
+
+  const handleLogout = async () => {
+    await signOut()
+    onLeave()
+  }
+
+  const userInitial = user?.email
+    ? user.email.slice(0, 2).toUpperCase()
+    : 'AD'
   const [adminPage, setAdminPage] = useState('dashboard')
   const [editingProduct, setEditingProduct] = useState(null)
   const [newProductImages, setNewProductImages] = useState([])
@@ -222,13 +234,25 @@ export function AdminPanel({ onLeave }) {
             onClick={() => setAdminPage('settings')}
           />
         </nav>
-        <div className="p-4 border-t border-teal-800 hidden md:block">
+        <div className="p-4 border-t border-teal-800 hidden md:block space-y-2">
+          {user?.email && (
+            <p className="text-xs text-teal-400/90 px-2 truncate" title={user.email}>
+              {user.email}
+            </p>
+          )}
           <button
             type="button"
             onClick={onLeave}
             className="flex items-center text-teal-300 hover:text-white transition w-full p-3 rounded-xl hover:bg-teal-800 font-medium border-0 bg-transparent cursor-pointer"
           >
             <ExternalLink className="w-5 h-5 mr-3" /> Voir la boutique
+          </button>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex items-center text-teal-300 hover:text-white transition w-full p-3 rounded-xl hover:bg-teal-800 font-medium border-0 bg-transparent cursor-pointer"
+          >
+            <LogOut className="w-5 h-5 mr-3" /> Déconnexion
           </button>
         </div>
       </aside>
@@ -246,8 +270,20 @@ export function AdminPanel({ onLeave }) {
             >
               Boutique
             </Button>
-            <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold border-2 border-white shadow-sm ring-2 ring-orange-200">
-              AD
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden text-gray-600"
+              onClick={handleLogout}
+              aria-label="Déconnexion"
+            >
+              <LogOut className="w-5 h-5" />
+            </Button>
+            <div
+              className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold border-2 border-white shadow-sm ring-2 ring-orange-200 text-xs"
+              title={user?.email || ''}
+            >
+              {userInitial}
             </div>
           </div>
         </header>
