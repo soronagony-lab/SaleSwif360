@@ -36,6 +36,7 @@ import { Label } from '@/components/ui/label'
 import { formatPrice, normalizePhoneForWhatsApp } from '@/lib/format'
 import { useAdminConfig } from '@/hooks/useAdminConfig'
 import { OrderDetailDialog } from '@/components/admin/OrderDetailDialog'
+import { ORDER_FOLLOW_UP_CATEGORIES } from '@/lib/orderFollowUpMessages'
 
 function interpolateWaTemplate(body, row, shopName) {
   const prix =
@@ -341,6 +342,11 @@ export function AdminPanel({ onLeave }) {
   const [newWaTemplate, setNewWaTemplate] = useState({
     title: '',
     angle: 'information',
+    body: '',
+  })
+  const [newOrderFollowUp, setNewOrderFollowUp] = useState({
+    title: '',
+    category: 'usage',
     body: '',
   })
 
@@ -1782,6 +1788,144 @@ export function AdminPanel({ onLeave }) {
                   </ul>
                 </div>
               </div>
+
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8">
+                <h3 className="font-bold text-gray-900 text-xl mb-2 flex items-center gap-2">
+                  <ShoppingCart className="w-6 h-6 text-teal-600 shrink-0" />
+                  Modèles après-commande (WhatsApp)
+                </h3>
+                <p className="text-sm text-gray-500 mb-3 leading-relaxed">
+                  Rattachés à chaque commande dans la modale « Voir » : comprendre
+                  pourquoi le client achète, proposer d&apos;autres produits du
+                  catalogue (suggestions automatiques), fidéliser, puis proposer
+                  l&apos;opportunité Forever via le lien{' '}
+                  <span className="font-mono text-xs bg-gray-100 px-1 rounded">
+                    /opportunite
+                  </span>
+                  .
+                </p>
+                <p className="text-xs text-gray-500 mb-4 break-words">
+                  Variables :{' '}
+                  <code className="bg-gray-50 px-1 rounded text-[11px]">
+                    {'{{nom}} {{boutique}} {{produit}} {{prix}} {{statut_commande}} {{suggestions_produits}} {{lien_opportunite}} {{url_boutique}}'}
+                  </code>
+                </p>
+                <div className="space-y-2 mb-6 max-h-64 overflow-y-auto">
+                  {(config.orderFollowUpTemplates || []).length === 0 && (
+                    <p className="text-sm text-gray-400 italic">
+                      Aucun modèle (valeurs par défaut au premier chargement).
+                    </p>
+                  )}
+                  {(config.orderFollowUpTemplates || []).map((t) => (
+                    <div
+                      key={t.id}
+                      className="flex flex-wrap items-start justify-between gap-2 bg-gray-50 rounded-xl p-3 border border-gray-100"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[10px] font-bold uppercase text-teal-700">
+                          {ORDER_FOLLOW_UP_CATEGORIES[t.category]?.label ||
+                            t.category}
+                        </span>
+                        <p className="font-bold text-gray-900 text-sm">{t.title}</p>
+                        <p className="text-xs text-gray-600 mt-1 line-clamp-3 whitespace-pre-wrap">
+                          {t.body}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg border-0 cursor-pointer shrink-0"
+                        title="Supprimer"
+                        onClick={() =>
+                          setConfig((c) => ({
+                            ...c,
+                            orderFollowUpTemplates: (
+                              c.orderFollowUpTemplates || []
+                            ).filter((x) => x.id !== t.id),
+                          }))
+                        }
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="border border-dashed border-gray-200 rounded-xl p-4 space-y-3">
+                  <p className="text-sm font-bold text-gray-700">
+                    Ajouter un modèle
+                  </p>
+                  <Input
+                    value={newOrderFollowUp.title}
+                    onChange={(e) =>
+                      setNewOrderFollowUp((s) => ({
+                        ...s,
+                        title: e.target.value,
+                      }))
+                    }
+                    placeholder="Titre interne"
+                  />
+                  <select
+                    value={newOrderFollowUp.category}
+                    onChange={(e) =>
+                      setNewOrderFollowUp((s) => ({
+                        ...s,
+                        category: e.target.value,
+                      }))
+                    }
+                    className="w-full h-11 rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm"
+                  >
+                    {Object.entries(ORDER_FOLLOW_UP_CATEGORIES).map(
+                      ([key, meta]) => (
+                        <option key={key} value={key}>
+                          {meta.label}
+                        </option>
+                      )
+                    )}
+                  </select>
+                  <textarea
+                    value={newOrderFollowUp.body}
+                    onChange={(e) =>
+                      setNewOrderFollowUp((s) => ({
+                        ...s,
+                        body: e.target.value,
+                      }))
+                    }
+                    rows={5}
+                    placeholder="Texte du message…"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm"
+                  />
+                  <Button
+                    type="button"
+                    className="rounded-xl w-full sm:w-auto"
+                    onClick={() => {
+                      if (
+                        !newOrderFollowUp.title.trim() ||
+                        !newOrderFollowUp.body.trim()
+                      )
+                        return
+                      setConfig((c) => ({
+                        ...c,
+                        orderFollowUpTemplates: [
+                          ...(c.orderFollowUpTemplates || []),
+                          {
+                            id: `ofu_${Date.now()}`,
+                            title: newOrderFollowUp.title.trim(),
+                            category: newOrderFollowUp.category,
+                            body: newOrderFollowUp.body.trim(),
+                          },
+                        ],
+                      }))
+                      setNewOrderFollowUp({
+                        title: '',
+                        category: 'usage',
+                        body: '',
+                      })
+                    }}
+                  >
+                    <Plus className="w-4 h-4" /> Enregistrer le modèle
+                  </Button>
+                </div>
+              </div>
+
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8 md:max-w-3xl">
                 <h3 className="font-bold text-gray-900 text-xl mb-6">Pixels tracking</h3>
                 <div className="space-y-4">
@@ -2438,6 +2582,8 @@ export function AdminPanel({ onLeave }) {
           zones={config.zones}
           couriers={config.couriers}
           relanceTemplates={config.whatsappTemplates}
+          orderFollowUpTemplates={config.orderFollowUpTemplates}
+          products={products}
           onPatchOrder={patchOrder}
           onDeleteOrder={deleteOrder}
         />

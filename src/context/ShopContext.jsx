@@ -16,6 +16,7 @@ import {
 } from '@/lib/adminConfigStorage'
 import { initialProducts } from '@/data/initialProducts'
 import { BRAND } from '@/lib/brand'
+import { notifyLeadByEmail, notifyOrderByEmail } from '@/lib/notifyEmail'
 
 const STORAGE_KEYS = {
   products: 'ssflp_products',
@@ -206,6 +207,8 @@ export function ShopProvider({ children }) {
     }
     setOrders((prev) => [localOrder, ...prev])
 
+    void notifyOrderByEmail(payload)
+
     if (!insforgeShop) return localId
 
     ;(async () => {
@@ -284,6 +287,8 @@ export function ShopProvider({ children }) {
       date: new Date().toLocaleString('fr-FR'),
     }
     setBusinessLeads((prev) => [localLead, ...prev])
+
+    void notifyLeadByEmail(payload)
 
     if (!insforgeShop) return localId
 
