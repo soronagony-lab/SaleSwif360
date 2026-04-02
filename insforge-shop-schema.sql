@@ -68,11 +68,12 @@ create policy "shop_settings_select" on public.shop_settings for select using (t
 create policy "shop_settings_insert" on public.shop_settings for insert with check (true);
 create policy "shop_settings_update" on public.shop_settings for update using (true);
 
-insert into public.shop_settings (id, shop_name, whats_app, relance_message)
+insert into public.shop_settings (id, shop_name, whats_app, relance_message, facebook_pixel_id)
 values (
   1,
   'Succès Solution FLP',
   '+2250506844901',
-  'Bonjour ! Vous avez consulté nos produits Forever Living chez Succès Solution FLP. Une question ? Répondez à ce message.'
+  'Bonjour ! Vous avez consulté nos produits Forever Living chez Succès Solution FLP. Une question ? Répondez à ce message.',
+  '1601177617317072'
 )
 on conflict (id) do nothing;

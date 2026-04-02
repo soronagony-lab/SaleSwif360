@@ -1,5 +1,6 @@
 # Succès Solution FLP — Côte d'Ivoire
 User-agent: *
 Allow: /
+Disallow: /admin
 
-# Sitemap : définissez l’URL complète après déploiement (ex. https://votredomaine.ci/sitemap.xml)
+Sitemap: https://sale-swif360.vercel.app/sitemap.xml

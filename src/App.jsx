@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from '@/context/AuthContext'
 import { ShopProvider } from '@/context/ShopContext'
 import { StoreFront } from '@/components/store/StoreFront'
 import { AdminPanel } from '@/components/admin/AdminPanel'
+import { AnalyticsGa4 } from '@/components/AnalyticsGa4'
 
 function AdminRoute() {
   const navigate = useNavigate()
@@ -47,6 +48,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <ShopProvider>
+          <AnalyticsGa4 />
           <AppShell />
         </ShopProvider>
       </AuthProvider>
