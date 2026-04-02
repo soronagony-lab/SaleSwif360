@@ -701,11 +701,10 @@ export function StoreFront({ onEnterAdmin }) {
           <button
             type="button"
             onClick={() => setPinOpen(true)}
-            className="mt-5 inline-flex items-center justify-center gap-2 text-xs font-medium text-stone-500 hover:text-emerald-800 border border-stone-200 hover:border-emerald-300 bg-stone-50/80 hover:bg-emerald-50 rounded-full px-4 py-2 transition-colors mx-auto"
-            aria-label="Ouvrir la connexion administrateur"
+            className="mt-5 mx-auto inline-flex items-center justify-center p-1.5 rounded-full text-stone-300 hover:text-stone-500 hover:bg-stone-100/60 border border-transparent hover:border-stone-200/80 transition-colors"
+            aria-label="Accès restreint"
           >
-            <Lock className="w-3.5 h-3.5 shrink-0" aria-hidden />
-            Espace tableau de bord
+            <Lock className="w-3 h-3" strokeWidth={1.75} />
           </button>
         </div>
       </footer>
