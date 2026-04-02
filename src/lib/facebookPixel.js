@@ -1,6 +1,26 @@
 /** Pixel Meta par défaut — peut être remplacé via réglages boutique */
 export const DEFAULT_FACEBOOK_PIXEL_ID = '1601177617317072'
 
+/**
+ * ISO 4217 pour les événements avec valeur (Meta).
+ * Défaut XOF (Franc CFA) — Côte d’Ivoire. Pour USD : VITE_META_PIXEL_CURRENCY=USD
+ * et des prix exprimés dans cette devise (ou adapter la conversion).
+ */
+const META_PIXEL_CURRENCY = String(
+  import.meta.env.VITE_META_PIXEL_CURRENCY || 'XOF'
+)
+  .trim()
+  .toUpperCase() || 'XOF'
+
+/** Valeur numérique pour fbq : entiers pour XOF, 2 décimales pour USD/EUR */
+function pixelMonetaryValue(amount) {
+  const n = Number(amount) || 0
+  if (META_PIXEL_CURRENCY === 'XOF' || META_PIXEL_CURRENCY === 'CLP' || META_PIXEL_CURRENCY === 'JPY') {
+    return Math.round(n)
+  }
+  return Math.round(n * 100) / 100
+}
+
 const FB_SCRIPT = 'https://connect.facebook.net/en_US/fbevents.js'
 
 let loadPromise = null
@@ -97,13 +117,13 @@ export function trackViewContent(product) {
   const fbq = getFbq()
   if (!fbq || !product) return
   const id = String(product.id)
-  const value = Number(product.price) || 0
+  const value = pixelMonetaryValue(product.price)
   fbq('track', 'ViewContent', {
+    value,
+    currency: META_PIXEL_CURRENCY,
     content_ids: [id],
     content_type: 'product',
     content_name: product.name,
-    value,
-    currency: 'XOF',
   })
 }
 
@@ -112,13 +132,54 @@ export function trackInitiateCheckout(product) {
   const fbq = getFbq()
   if (!fbq || !product) return
   const id = String(product.id)
-  const value = Number(product.price) || 0
+  const value = pixelMonetaryValue(product.price)
   fbq('track', 'InitiateCheckout', {
+    value,
+    currency: META_PIXEL_CURRENCY,
     content_ids: [id],
     content_type: 'product',
-    value,
-    currency: 'XOF',
     num_items: 1,
+  })
+}
+
+/** Clic « Commander maintenant » — événement personnalisé (complète InitiateCheckout) */
+export function trackCommanderMaintenant(product) {
+  const fbq = getFbq()
+  if (!fbq || !product) return
+  const id = String(product.id)
+  const value = pixelMonetaryValue(product.price)
+  fbq('trackCustom', 'CommanderMaintenant', {
+    value,
+    currency: META_PIXEL_CURRENCY,
+    content_ids: [id],
+    content_name: product.name,
+  })
+}
+
+/** Clic « Valider ma commande » — infos livraison (COD) */
+export function trackAddPaymentInfo(product) {
+  const fbq = getFbq()
+  if (!fbq || !product) return
+  const id = String(product.id)
+  const value = pixelMonetaryValue(product.price)
+  fbq('track', 'AddPaymentInfo', {
+    value,
+    currency: META_PIXEL_CURRENCY,
+    content_ids: [id],
+    content_type: 'product',
+    num_items: 1,
+  })
+}
+
+/** Clic « Retourner à la boutique » après confirmation (achat enregistré) */
+export function trackRetourBoutiqueApresAchat({ orderId, productId, value }) {
+  const fbq = getFbq()
+  if (!fbq) return
+  fbq('trackCustom', 'RetourBoutiqueApresAchat', {
+    order_id: orderId != null ? String(orderId) : '',
+    content_ids: productId != null ? [String(productId)] : [],
+    value: pixelMonetaryValue(value),
+    currency: META_PIXEL_CURRENCY,
   })
 }
 
@@ -127,13 +188,13 @@ export function trackPurchase(payload) {
   const fbq = getFbq()
   if (!fbq || !payload) return
   const pid = String(payload.productId ?? '')
-  const value = Number(payload.price) || 0
+  const value = pixelMonetaryValue(payload.price)
   const params = {
+    value,
+    currency: META_PIXEL_CURRENCY,
     content_ids: pid ? [pid] : [],
     content_type: 'product',
     content_name: payload.productName,
-    value,
-    currency: 'XOF',
     num_items: 1,
   }
   const options =

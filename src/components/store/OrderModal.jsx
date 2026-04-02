@@ -17,18 +17,26 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ProductImage } from '@/components/ProductImage'
 import { formatPrice } from '@/lib/format'
+import {
+  trackAddPaymentInfo,
+  trackPurchase,
+  trackRetourBoutiqueApresAchat,
+} from '@/lib/facebookPixel'
 
 export function OrderModal({
   open,
   onOpenChange,
   product,
+  /** @returns {number|string|undefined} id commande local */
   onSubmitOrder,
 }) {
   const [success, setSuccess] = useState(false)
+  const [confirmedOrderId, setConfirmedOrderId] = useState(null)
 
   const handleClose = (v) => {
     if (!v) {
       setSuccess(false)
+      setConfirmedOrderId(null)
     }
     onOpenChange(v)
   }
@@ -37,7 +45,7 @@ export function OrderModal({
     e.preventDefault()
     if (!product) return
     const formData = new FormData(e.target)
-    onSubmitOrder({
+    const payload = {
       productId: product.id,
       productName: product.name,
       price: product.price,
@@ -47,8 +55,33 @@ export function OrderModal({
       address: formData.get('address'),
       status: 'Nouvelle',
       date: new Date().toLocaleString('fr-FR'),
-    })
+    }
+
+    trackAddPaymentInfo(product) // « Valider ma commande » — infos livraison / COD
+
+    const orderId = onSubmitOrder(payload)
+
+    if (orderId != null) {
+      trackPurchase({
+        id: orderId,
+        productId: payload.productId,
+        productName: payload.productName,
+        price: payload.price,
+      })
+    }
+    setConfirmedOrderId(orderId ?? null)
     setSuccess(true)
+  }
+
+  const handleRetourBoutique = () => {
+    if (product && confirmedOrderId != null) {
+      trackRetourBoutiqueApresAchat({
+        orderId: confirmedOrderId,
+        productId: product.id,
+        value: product.price,
+      })
+    }
+    handleClose(false)
   }
 
   if (!product) return null
@@ -77,7 +110,7 @@ export function OrderModal({
             <Button
               variant="default"
               className="w-full rounded-xl py-6 text-base"
-              onClick={() => handleClose(false)}
+              onClick={handleRetourBoutique}
             >
               Retourner à la boutique
             </Button>

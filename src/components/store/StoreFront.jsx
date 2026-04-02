@@ -31,9 +31,9 @@ import { BlogArticleView, BlogList } from '@/components/store/BlogSection'
 import {
   initFacebookPixel,
   resolvePixelId,
+  trackCommanderMaintenant,
   trackInitiateCheckout,
   trackPageView,
-  trackPurchase,
   trackViewContent,
 } from '@/lib/facebookPixel'
 import { productPath } from '@/lib/productSlug'
@@ -142,20 +142,13 @@ export function StoreFront() {
   }
 
   const openOrder = (product) => {
+    trackCommanderMaintenant(product)
+    trackInitiateCheckout(product)
     setOrderProduct(product)
     setOrderModalOpen(true)
-    trackInitiateCheckout(product)
   }
 
-  const handleOrderSubmit = (payload) => {
-    const orderId = submitOrder(payload)
-    trackPurchase({
-      id: orderId,
-      productId: payload.productId,
-      productName: payload.productName,
-      price: payload.price,
-    })
-  }
+  const handleOrderSubmit = (payload) => submitOrder(payload)
 
   const navBtn = (active) =>
     `hover:text-emerald-700 transition-colors font-medium border-b-2 pb-0.5 ${
