@@ -1,6 +1,7 @@
 /** Mappers et accès DB boutique InsForge (PostgREST) */
 
 import { BRAND } from '@/lib/brand'
+import { normalizeShopSettingsFields } from '@/lib/brandReplace'
 
 const TEMP_ID_THRESHOLD = 1_000_000_000_000 // > ~2001 en ms — ids locaux Date.now()
 
@@ -102,13 +103,13 @@ export function mapBusinessLeadRow(row) {
 
 export function mapSettingsRow(row) {
   if (!row) return {}
-  return {
+  return normalizeShopSettingsFields({
     shopName: row.shop_name ?? BRAND.name,
     whatsApp: row.whats_app ?? '',
     relanceMessage: row.relance_message ?? '',
     facebookPixelId: row.facebook_pixel_id ?? '',
     ga4Id: row.ga4_id ?? '',
-  }
+  })
 }
 
 export function mapSettingsToRow(patch) {

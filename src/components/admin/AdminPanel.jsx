@@ -37,6 +37,7 @@ import { formatPrice, normalizePhoneForWhatsApp } from '@/lib/format'
 import { useAdminConfig } from '@/hooks/useAdminConfig'
 import { OrderDetailDialog } from '@/components/admin/OrderDetailDialog'
 import { ORDER_FOLLOW_UP_CATEGORIES } from '@/lib/orderFollowUpMessages'
+import { BRAND } from '@/lib/brand'
 
 function interpolateWaTemplate(body, row, shopName) {
   const prix =
@@ -2346,6 +2347,7 @@ export function AdminPanel({ onLeave }) {
                       onChange={(e) =>
                         updateSettings({ shopName: e.target.value })
                       }
+                      placeholder={BRAND.name}
                     />
                   </div>
                   <div>

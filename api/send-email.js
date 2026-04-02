@@ -8,6 +8,7 @@
  */
 
 import { Resend } from 'resend'
+import { replaceLegacyBrandInText } from '../src/lib/brandReplace.js'
 
 function parseJsonBody(req) {
   return new Promise((resolve, reject) => {
@@ -33,6 +34,11 @@ function escapeHtml(s) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
+}
+
+/** Texte utilisateur + normalisation ancienne marque, puis échappement HTML */
+function cell(s) {
+  return escapeHtml(replaceLegacyBrandInText(String(s ?? '')))
 }
 
 export default async function handler(req, res) {
@@ -84,35 +90,39 @@ export default async function handler(req, res) {
   let html
 
   if (kind === 'lead') {
-    subject = `Nouveau prospect — ${payload.fullName || 'Sans nom'}`
+    subject = replaceLegacyBrandInText(
+      `Nouveau prospect — ${payload.fullName || 'Sans nom'}`
+    )
     html = `
       <h2 style="font-family:system-ui,sans-serif;">Prospection business</h2>
       <table style="font-family:system-ui,sans-serif;font-size:14px;border-collapse:collapse;">
-        <tr><td><strong>Nom</strong></td><td>${escapeHtml(payload.fullName)}</td></tr>
-        <tr><td><strong>Téléphone</strong></td><td>${escapeHtml(payload.phone)}</td></tr>
-        <tr><td><strong>E-mail</strong></td><td>${escapeHtml(payload.email)}</td></tr>
-        <tr><td><strong>Ville</strong></td><td>${escapeHtml(payload.city)}</td></tr>
-        <tr><td><strong>Objectif</strong></td><td>${escapeHtml(payload.goal)}</td></tr>
-        <tr><td><strong>Expérience</strong></td><td>${escapeHtml(payload.experience)}</td></tr>
-        <tr><td valign="top"><strong>Message</strong></td><td>${escapeHtml(payload.message)}</td></tr>
+        <tr><td><strong>Nom</strong></td><td>${cell(payload.fullName)}</td></tr>
+        <tr><td><strong>Téléphone</strong></td><td>${cell(payload.phone)}</td></tr>
+        <tr><td><strong>E-mail</strong></td><td>${cell(payload.email)}</td></tr>
+        <tr><td><strong>Ville</strong></td><td>${cell(payload.city)}</td></tr>
+        <tr><td><strong>Objectif</strong></td><td>${cell(payload.goal)}</td></tr>
+        <tr><td><strong>Expérience</strong></td><td>${cell(payload.experience)}</td></tr>
+        <tr><td valign="top"><strong>Message</strong></td><td>${cell(payload.message)}</td></tr>
       </table>
     `
   } else if (kind === 'order') {
-    subject = `Nouvelle commande — ${payload.customerName || 'Client'}`
+    subject = replaceLegacyBrandInText(
+      `Nouvelle commande — ${payload.customerName || 'Client'}`
+    )
     html = `
       <h2 style="font-family:system-ui,sans-serif;">Commande boutique</h2>
       <table style="font-family:system-ui,sans-serif;font-size:14px;">
-        <tr><td><strong>Client</strong></td><td>${escapeHtml(payload.customerName)}</td></tr>
-        <tr><td><strong>Téléphone</strong></td><td>${escapeHtml(payload.phone)}</td></tr>
-        <tr><td><strong>Produit</strong></td><td>${escapeHtml(payload.productName)}</td></tr>
-        <tr><td><strong>Prix</strong></td><td>${escapeHtml(String(payload.price))}</td></tr>
-        <tr><td><strong>Ville</strong></td><td>${escapeHtml(payload.city)}</td></tr>
-        <tr><td><strong>Adresse</strong></td><td>${escapeHtml(payload.address)}</td></tr>
+        <tr><td><strong>Client</strong></td><td>${cell(payload.customerName)}</td></tr>
+        <tr><td><strong>Téléphone</strong></td><td>${cell(payload.phone)}</td></tr>
+        <tr><td><strong>Produit</strong></td><td>${cell(payload.productName)}</td></tr>
+        <tr><td><strong>Prix</strong></td><td>${cell(String(payload.price))}</td></tr>
+        <tr><td><strong>Ville</strong></td><td>${cell(payload.city)}</td></tr>
+        <tr><td><strong>Adresse</strong></td><td>${cell(payload.address)}</td></tr>
       </table>
     `
   } else if (kind === 'test') {
-    subject = payload.subject || 'Test Resend'
-    html = payload.html || '<p>Test</p>'
+    subject = replaceLegacyBrandInText(payload.subject || 'Test Resend')
+    html = replaceLegacyBrandInText(payload.html || '<p>Test</p>')
   } else {
     return res.status(400).json({ error: 'kind invalide (lead|order|test)' })
   }

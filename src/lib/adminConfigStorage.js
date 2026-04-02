@@ -1,5 +1,7 @@
 /** Persistance locale : zones, livreurs, collaborateurs, modèles WhatsApp, journal campagnes */
 
+import { replaceLegacyBrandInText } from '@/lib/brandReplace'
+
 const STORAGE_KEY = 'ssflp_admin_config'
 const ORDER_EXTRAS_KEY = 'ssflp_order_extras'
 const DEFAULT_ZONES = [
@@ -93,6 +95,27 @@ const DEFAULT_WHATSAPP_TEMPLATES = [
   },
 ]
 
+function mapTemplatesLegacy(templates) {
+  return (templates || []).map((t) => ({
+    ...t,
+    title:
+      t.title != null ? replaceLegacyBrandInText(String(t.title)) : t.title,
+    body: t.body != null ? replaceLegacyBrandInText(String(t.body)) : t.body,
+  }))
+}
+
+function mapCampaignLogLegacy(log) {
+  return (log || []).map((entry) => {
+    if (!entry || typeof entry !== 'object') return entry
+    const next = { ...entry }
+    if (next.message != null)
+      next.message = replaceLegacyBrandInText(String(next.message))
+    if (next.preview != null)
+      next.preview = replaceLegacyBrandInText(String(next.preview))
+    return next
+  })
+}
+
 function defaultConfig() {
   return {
     zones: DEFAULT_ZONES.map((z) => ({ ...z })),
@@ -148,15 +171,21 @@ export function loadAdminConfig() {
       collaborators: Array.isArray(parsed.collaborators)
         ? parsed.collaborators
         : [],
-      whatsappTemplates: Array.isArray(parsed.whatsappTemplates)
-        ? parsed.whatsappTemplates
-        : Array.isArray(parsed.whatsAppTemplates)
-          ? parsed.whatsAppTemplates
-          : defaultConfig().whatsappTemplates,
-      campaignLog: Array.isArray(parsed.campaignLog) ? parsed.campaignLog : [],
-      orderFollowUpTemplates: Array.isArray(parsed.orderFollowUpTemplates)
-        ? parsed.orderFollowUpTemplates
-        : defaultConfig().orderFollowUpTemplates,
+      whatsappTemplates: mapTemplatesLegacy(
+        Array.isArray(parsed.whatsappTemplates)
+          ? parsed.whatsappTemplates
+          : Array.isArray(parsed.whatsAppTemplates)
+            ? parsed.whatsAppTemplates
+            : defaultConfig().whatsappTemplates
+      ),
+      campaignLog: mapCampaignLogLegacy(
+        Array.isArray(parsed.campaignLog) ? parsed.campaignLog : []
+      ),
+      orderFollowUpTemplates: mapTemplatesLegacy(
+        Array.isArray(parsed.orderFollowUpTemplates)
+          ? parsed.orderFollowUpTemplates
+          : defaultConfig().orderFollowUpTemplates
+      ),
     }
   } catch {
     return defaultConfig()

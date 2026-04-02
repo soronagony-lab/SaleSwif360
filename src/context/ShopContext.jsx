@@ -16,6 +16,7 @@ import {
 } from '@/lib/adminConfigStorage'
 import { initialProducts } from '@/data/initialProducts'
 import { BRAND } from '@/lib/brand'
+import { normalizeShopSettingsFields } from '@/lib/brandReplace'
 import { notifyLeadByEmail, notifyOrderByEmail } from '@/lib/notifyEmail'
 
 const STORAGE_KEYS = {
@@ -80,10 +81,12 @@ export function ShopProvider({ children }) {
   const [orders, setOrders] = useState(() =>
     applyOrderExtrasToOrders(loadJson(STORAGE_KEYS.orders, []))
   )
-  const [settings, setSettings] = useState(() => ({
-    ...defaultSettings,
-    ...loadJson(STORAGE_KEYS.settings, {}),
-  }))
+  const [settings, setSettings] = useState(() =>
+    normalizeShopSettingsFields({
+      ...defaultSettings,
+      ...loadJson(STORAGE_KEYS.settings, {}),
+    })
+  )
   const [businessLeads, setBusinessLeads] = useState(() =>
     loadJson(STORAGE_KEYS.businessLeads, [])
   )
@@ -110,7 +113,9 @@ export function ShopProvider({ children }) {
         skipPersistSettings.current = true
         setProducts(p.length > 0 ? p : [])
         setOrders(applyOrderExtrasToOrders(o))
-        setSettings({ ...defaultSettings, ...s })
+        setSettings(
+          normalizeShopSettingsFields({ ...defaultSettings, ...s })
+        )
         setBusinessLeads(Array.isArray(bl) ? bl : [])
         setRemoteError(null)
       } catch (e) {
@@ -121,10 +126,12 @@ export function ShopProvider({ children }) {
         setOrders(
           applyOrderExtrasToOrders(loadJson(STORAGE_KEYS.orders, []))
         )
-        setSettings({
-          ...defaultSettings,
-          ...loadJson(STORAGE_KEYS.settings, {}),
-        })
+        setSettings(
+          normalizeShopSettingsFields({
+            ...defaultSettings,
+            ...loadJson(STORAGE_KEYS.settings, {}),
+          })
+        )
         setBusinessLeads(loadJson(STORAGE_KEYS.businessLeads, []))
       } finally {
         if (!cancelled) setRemoteLoading(false)
