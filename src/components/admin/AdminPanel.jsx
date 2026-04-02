@@ -5,6 +5,7 @@ import {
   Box,
   Download,
   Edit2,
+  ClipboardList,
   Eye,
   ExternalLink,
   Image as ImageIcon,
@@ -25,7 +26,6 @@ import {
   User,
   Users,
   Target,
-  Mail,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useShop } from '@/context/ShopContext'
@@ -36,8 +36,10 @@ import { Label } from '@/components/ui/label'
 import { formatPrice, normalizePhoneForWhatsApp } from '@/lib/format'
 import { useAdminConfig } from '@/hooks/useAdminConfig'
 import { OrderDetailDialog } from '@/components/admin/OrderDetailDialog'
+import { LeadDetailDialog } from '@/components/admin/LeadDetailDialog'
 import { ORDER_FOLLOW_UP_CATEGORIES } from '@/lib/orderFollowUpMessages'
 import { BRAND } from '@/lib/brand'
+import { LEAD_EXP_LABELS, LEAD_GOAL_LABELS } from '@/lib/leadLabels'
 
 function interpolateWaTemplate(body, row, shopName) {
   const prix =
@@ -60,39 +62,6 @@ function exportCsv(filename, rows) {
   a.download = filename
   a.click()
   URL.revokeObjectURL(a.href)
-}
-
-const LEAD_GOAL_LABELS = {
-  revenus_complementaires: 'Revenus complémentaires',
-  remplacer_salaire: 'Remplacer ou compléter un salaire',
-  entrepreneuriat: 'Projet entrepreneurial',
-  decouverte: 'Découverte / information',
-}
-
-const LEAD_EXP_LABELS = {
-  debutant: 'Débutant',
-  vente_en_ligne: 'Vente en ligne / réseau',
-  experimente: 'Expérimenté vente directe',
-}
-
-function leadWhatsAppHref(lead, shopName) {
-  const phone = normalizePhoneForWhatsApp(lead.phone)
-  const goal = LEAD_GOAL_LABELS[lead.goal] || lead.goal || '—'
-  const msg = `Bonjour ${lead.fullName},\n\nMerci pour votre demande sur *${shopName}* (opportunité business).\nObjectif indiqué : ${goal}.\nJe reviens vers vous très vite.\n\n— ${shopName}`
-  return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
-}
-
-function leadMailtoHref(lead, shopName) {
-  const subject = encodeURIComponent(
-    `${shopName} — Opportunité business`
-  )
-  const body = encodeURIComponent(
-    `Bonjour ${lead.fullName},\n\nMerci pour votre intérêt.\n\n---\nTél. : ${lead.phone}\nE-mail : ${lead.email || '—'}\nVille : ${lead.city || '—'}\nObjectif : ${LEAD_GOAL_LABELS[lead.goal] || lead.goal || '—'}\nExpérience : ${LEAD_EXP_LABELS[lead.experience] || lead.experience || '—'}\nMessage : ${lead.message || '—'}\n`
-  )
-  if (lead.email && String(lead.email).includes('@')) {
-    return `mailto:${lead.email}?subject=${subject}&body=${body}`
-  }
-  return `mailto:?subject=${subject}&body=${body}`
 }
 
 function AdminNavLink({ icon, label, active, onClick, badge }) {
@@ -191,6 +160,8 @@ export function AdminPanel({ onLeave }) {
   const [editingProduct, setEditingProduct] = useState(null)
   const [newProductImages, setNewProductImages] = useState([])
   const [orderDialogId, setOrderDialogId] = useState(null)
+  const [leadDialogId, setLeadDialogId] = useState(null)
+  const [leadDialogTab, setLeadDialogTab] = useState('view')
   const [customerSearch, setCustomerSearch] = useState('')
   const [customerCityFilter, setCustomerCityFilter] = useState('')
   const [customerSort, setCustomerSort] = useState('recent')
@@ -309,6 +280,11 @@ export function AdminPanel({ onLeave }) {
   const orderForDialog = useMemo(
     () => orders.find((o) => o.id === orderDialogId) ?? null,
     [orders, orderDialogId]
+  )
+
+  const leadForDialog = useMemo(
+    () => businessLeads.find((l) => l.id === leadDialogId) ?? null,
+    [businessLeads, leadDialogId]
   )
 
   const appendCampaignLog = useCallback(
@@ -1248,9 +1224,13 @@ export function AdminPanel({ onLeave }) {
                     Prospection business
                   </h3>
                   <p className="text-sm text-gray-500 mt-1">
-                    Formulaire lead magnet sur{' '}
-                    <span className="font-mono text-xs">/opportunite</span> —
-                    répondez par WhatsApp ou e-mail.
+                    Formulaire sur{' '}
+                    <span className="font-mono text-xs">/opportunite</span>.{' '}
+                    <strong className="text-gray-600">Voir</strong> ouvre la
+                    fiche complète ; <strong className="text-gray-600">
+                      Traitement
+                    </strong>{' '}
+                    le suivi (statut, note, contacts).
                   </p>
                 </div>
                 <Button
@@ -1308,84 +1288,54 @@ export function AdminPanel({ onLeave }) {
                     className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-3"
                   >
                     <div className="flex justify-between items-start gap-2">
-                      <div>
-                        <p className="font-bold text-gray-900">{lead.fullName}</p>
+                      <div className="min-w-0">
+                        <p className="font-bold text-gray-900 truncate">
+                          {lead.fullName}
+                        </p>
                         <p className="text-xs text-gray-500">{lead.date}</p>
                       </div>
-                      <select
-                        value={lead.status}
-                        onChange={(e) =>
-                          patchBusinessLead(lead.id, {
-                            status: e.target.value,
-                          })
-                        }
-                        className="text-xs font-bold px-2 py-2 rounded-lg border border-gray-200 bg-gray-50 min-h-[44px]"
+                      <span
+                        className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${
+                          lead.status === 'Nouveau'
+                            ? 'bg-blue-100 text-blue-800'
+                            : lead.status === 'Contacté'
+                              ? 'bg-amber-100 text-amber-900'
+                              : lead.status === 'Qualifié'
+                                ? 'bg-teal-100 text-teal-900'
+                                : 'bg-gray-100 text-gray-700'
+                        }`}
                       >
-                        <option value="Nouveau">Nouveau</option>
-                        <option value="Contacté">Contacté</option>
-                        <option value="Qualifié">Qualifié</option>
-                        <option value="Archivé">Archivé</option>
-                      </select>
+                        {lead.status}
+                      </span>
                     </div>
                     <p className="text-sm text-gray-700">
                       <Phone className="inline w-3.5 h-3.5 mr-1" />
                       {lead.phone}
                     </p>
-                    {lead.email ? (
-                      <p className="text-sm text-gray-600 break-all">
-                        <Mail className="inline w-3.5 h-3.5 mr-1" />
-                        {lead.email}
-                      </p>
-                    ) : null}
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-gray-600 line-clamp-2">
                       {LEAD_GOAL_LABELS[lead.goal] || lead.goal || '—'} ·{' '}
                       {LEAD_EXP_LABELS[lead.experience] || lead.experience || '—'}
                     </p>
-                    {lead.message ? (
-                      <p className="text-xs text-gray-500 border-t border-gray-100 pt-2">
-                        {lead.message}
-                      </p>
-                    ) : null}
-                    <textarea
-                      defaultValue={lead.internalNote || ''}
-                      onBlur={(e) =>
-                        patchBusinessLead(lead.id, {
-                          internalNote: e.target.value,
-                        })
-                      }
-                      placeholder="Note interne…"
-                      rows={2}
-                      className="w-full text-sm rounded-xl border border-gray-200 bg-gray-50 px-3 py-2"
-                    />
-                    <div className="flex flex-wrap gap-2">
-                      <a
-                        href={leadWhatsAppHref(lead, settings.shopName)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex flex-1 min-w-[120px] min-h-[44px] items-center justify-center gap-1.5 bg-[#25D366] text-white px-3 py-2 rounded-xl font-bold text-xs"
-                      >
-                        <MessageCircle className="w-4 h-4" /> WhatsApp
-                      </a>
-                      <a
-                        href={leadMailtoHref(lead, settings.shopName)}
-                        className="inline-flex flex-1 min-w-[120px] min-h-[44px] items-center justify-center gap-1.5 bg-gray-100 text-gray-800 px-3 py-2 rounded-xl font-bold text-xs"
-                      >
-                        <Mail className="w-4 h-4" /> E-mail
-                      </a>
+                    <div className="flex flex-wrap gap-2 pt-1">
                       <button
                         type="button"
                         onClick={() => {
-                          if (
-                            window.confirm(
-                              'Supprimer ce prospect ?'
-                            )
-                          ) {
-                            deleteBusinessLead(lead.id)
-                          }
+                          setLeadDialogTab('view')
+                          setLeadDialogId(lead.id)
                         }}
-                        className="inline-flex flex-1 min-w-[120px] min-h-[44px] items-center justify-center gap-1 bg-red-50 text-red-700 px-3 py-2 rounded-xl font-bold text-xs border-0"
+                        className="inline-flex flex-1 min-w-[120px] min-h-[44px] items-center justify-center gap-1.5 bg-rose-100 hover:bg-rose-200 text-rose-900 px-3 py-2 rounded-xl font-bold text-xs border-0"
                       >
-                        <Trash2 className="w-4 h-4" /> Supprimer
+                        <Eye className="w-4 h-4" /> Voir
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLeadDialogTab('treat')
+                          setLeadDialogId(lead.id)
+                        }}
+                        className="inline-flex flex-1 min-w-[120px] min-h-[44px] items-center justify-center gap-1.5 bg-teal-100 hover:bg-teal-200 text-teal-900 px-3 py-2 rounded-xl font-bold text-xs border-0"
+                      >
+                        <ClipboardList className="w-4 h-4" /> Traitement
                       </button>
                     </div>
                   </div>
@@ -1394,7 +1344,7 @@ export function AdminPanel({ onLeave }) {
 
               <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left min-w-[920px]">
+                  <table className="w-full text-left min-w-[800px]">
                     <thead>
                       <tr className="bg-gray-50 text-gray-500 text-xs uppercase border-b border-gray-200">
                         <th className="p-3 font-bold">Date</th>
@@ -1402,13 +1352,12 @@ export function AdminPanel({ onLeave }) {
                         <th className="p-3 font-bold">Contact</th>
                         <th className="p-3 font-bold">Profil</th>
                         <th className="p-3 font-bold">Statut</th>
-                        <th className="p-3 font-bold">Note</th>
                         <th className="p-3 font-bold text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="text-sm divide-y divide-gray-100">
                       {businessLeads.map((lead) => (
-                        <tr key={lead.id} className="hover:bg-gray-50">
+                        <tr key={lead.id} className="hover:bg-rose-50/40">
                           <td className="p-3 align-top text-xs text-gray-500 whitespace-nowrap">
                             {lead.date}
                           </td>
@@ -1424,83 +1373,54 @@ export function AdminPanel({ onLeave }) {
                               {lead.city || '—'}
                             </div>
                           </td>
-                          <td className="p-3 align-top text-xs text-gray-700 max-w-[200px]">
+                          <td className="p-3 align-top text-xs text-gray-700 max-w-[220px]">
                             <div>
                               {LEAD_GOAL_LABELS[lead.goal] || lead.goal || '—'}
                             </div>
-                            <div className="text-gray-500 mt-1">
+                            <div className="text-gray-500 mt-1 line-clamp-1">
                               {LEAD_EXP_LABELS[lead.experience] ||
                                 lead.experience ||
                                 '—'}
                             </div>
-                            {lead.message ? (
-                              <div className="mt-2 text-gray-500 line-clamp-2">
-                                {lead.message}
-                              </div>
-                            ) : null}
                           </td>
                           <td className="p-3 align-top">
-                            <select
-                              value={lead.status}
-                              onChange={(e) =>
-                                patchBusinessLead(lead.id, {
-                                  status: e.target.value,
-                                })
-                              }
-                              className="text-xs font-bold px-2 py-1.5 rounded-lg border border-gray-200 bg-white"
+                            <span
+                              className={`inline-block text-[11px] font-bold px-2 py-1 rounded-full ${
+                                lead.status === 'Nouveau'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : lead.status === 'Contacté'
+                                    ? 'bg-amber-100 text-amber-900'
+                                    : lead.status === 'Qualifié'
+                                      ? 'bg-teal-100 text-teal-900'
+                                      : 'bg-gray-100 text-gray-700'
+                              }`}
                             >
-                              <option value="Nouveau">Nouveau</option>
-                              <option value="Contacté">Contacté</option>
-                              <option value="Qualifié">Qualifié</option>
-                              <option value="Archivé">Archivé</option>
-                            </select>
-                          </td>
-                          <td className="p-3 align-top text-xs max-w-[180px]">
-                            <textarea
-                              defaultValue={lead.internalNote || ''}
-                              onBlur={(e) =>
-                                patchBusinessLead(lead.id, {
-                                  internalNote: e.target.value,
-                                })
-                              }
-                              rows={2}
-                              className="w-full rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-xs"
-                              placeholder="Résumé d’appel…"
-                            />
+                              {lead.status}
+                            </span>
                           </td>
                           <td className="p-3 align-top text-right">
-                            <div className="flex flex-wrap gap-1 justify-end">
-                              <a
-                                href={leadWhatsAppHref(lead, settings.shopName)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center bg-[#25D366] text-white p-2 rounded-lg"
-                                title="WhatsApp"
-                              >
-                                <MessageCircle className="w-4 h-4" />
-                              </a>
-                              <a
-                                href={leadMailtoHref(lead, settings.shopName)}
-                                className="inline-flex items-center justify-center bg-gray-100 text-gray-800 p-2 rounded-lg"
-                                title="E-mail"
-                              >
-                                <Mail className="w-4 h-4" />
-                              </a>
+                            <div className="flex flex-wrap gap-1.5 justify-end items-center">
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (
-                                    window.confirm(
-                                      'Supprimer ce prospect ?'
-                                    )
-                                  ) {
-                                    deleteBusinessLead(lead.id)
-                                  }
+                                  setLeadDialogTab('view')
+                                  setLeadDialogId(lead.id)
                                 }}
-                                className="inline-flex items-center justify-center bg-red-50 text-red-700 p-2 rounded-lg border-0 cursor-pointer"
-                                title="Supprimer"
+                                className="inline-flex items-center justify-center bg-rose-100 hover:bg-rose-200 text-rose-900 px-2.5 py-2 rounded-xl font-bold text-xs border-0 cursor-pointer min-h-[40px]"
+                                title="Voir la fiche"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setLeadDialogTab('treat')
+                                  setLeadDialogId(lead.id)
+                                }}
+                                className="inline-flex items-center justify-center bg-teal-100 hover:bg-teal-200 text-teal-900 px-2.5 py-2 rounded-xl font-bold text-xs border-0 cursor-pointer min-h-[40px]"
+                                title="Traitement"
+                              >
+                                <ClipboardList className="w-4 h-4" />
                               </button>
                             </div>
                           </td>
@@ -2574,6 +2494,17 @@ export function AdminPanel({ onLeave }) {
             </div>
           )}
         </div>
+        <LeadDetailDialog
+          open={leadDialogId != null && leadForDialog != null}
+          onOpenChange={(open) => {
+            if (!open) setLeadDialogId(null)
+          }}
+          lead={leadForDialog}
+          initialTab={leadDialogTab}
+          shopName={settings.shopName}
+          onPatchLead={patchBusinessLead}
+          onDeleteLead={deleteBusinessLead}
+        />
         <OrderDetailDialog
           open={orderDialogId != null}
           onOpenChange={(open) => {
