@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ExternalLink,
   Leaf,
+  Lock,
   Menu,
   Phone,
   Search,
@@ -697,24 +698,17 @@ export function StoreFront({ onEnterAdmin }) {
           <p className="mt-6 text-xs text-stone-400">
             © {new Date().getFullYear()} {BRAND.name} — Tous droits réservés.
           </p>
+          <button
+            type="button"
+            onClick={() => setPinOpen(true)}
+            className="mt-5 inline-flex items-center justify-center gap-2 text-xs font-medium text-stone-500 hover:text-emerald-800 border border-stone-200 hover:border-emerald-300 bg-stone-50/80 hover:bg-emerald-50 rounded-full px-4 py-2 transition-colors mx-auto"
+            aria-label="Ouvrir la connexion administrateur"
+          >
+            <Lock className="w-3.5 h-3.5 shrink-0" aria-hidden />
+            Espace tableau de bord
+          </button>
         </div>
       </footer>
-
-      {/* Accès discret tableau de bord (partenaires) */}
-      <button
-        type="button"
-        onClick={() => setPinOpen(true)}
-        className="fixed bottom-0 right-0 z-[70] h-7 w-7 sm:h-8 sm:w-8 opacity-[0.07] hover:opacity-35 cursor-pointer border-0 bg-emerald-950/15 rounded-tl-lg"
-        aria-label="Connexion partenaire"
-        title=""
-      />
-      <button
-        type="button"
-        onClick={() => setPinOpen(true)}
-        className="sr-only focus:not-sr-only focus:fixed focus:bottom-4 focus:right-4 focus:z-[80] focus:rounded-lg focus:bg-emerald-800 focus:text-white focus:px-3 focus:py-2 focus:text-sm focus:shadow-lg"
-      >
-        Tableau de bord partenaire
-      </button>
 
       <OrderModal
         open={orderModalOpen}

@@ -38,11 +38,28 @@ function loadJson(key, fallback) {
 }
 
 function formatShopSyncError(err) {
-  const raw = err?.message ?? String(err ?? '')
-  if (/invalid token/i.test(raw)) {
-    return 'Clé API InsForge incorrecte ou expirée — vérifiez VITE_INSFORGE_ANON_KEY et VITE_INSFORGE_URL (Vercel / .env).'
+  const raw =
+    err?.message ??
+    err?.error?.message ??
+    err?.details ??
+    String(err ?? '')
+  const lower = raw.toLowerCase()
+
+  if (
+    /invalid token|invalid jwt|jwt expired|pgrst301|malformed jwt|unauthorized/.test(
+      lower
+    ) ||
+    (err?.statusCode === 401 && /token|jwt|auth/i.test(raw))
+  ) {
+    return 'Sync serveur : la clé anonyme ou l’URL InsForge ne correspond pas au projet. Dans le dashboard InsForge, copiez l’URL du backend et la clé publique « anon » (pas la clé secrète). Sur Vercel : Settings → Environment Variables → VITE_INSFORGE_URL (sans / à la fin) et VITE_INSFORGE_ANON_KEY, puis redéployez. Vérifiez les espaces en début/fin de clé.'
   }
-  return raw || 'Sync InsForge impossible'
+  if (/failed to fetch|network|load failed|echec|econnrefused/i.test(lower)) {
+    return 'Impossible de joindre le serveur InsForge (réseau ou URL incorrecte). Vérifiez VITE_INSFORGE_URL et votre connexion.'
+  }
+  if (/relation|does not exist|42p01|pgrst205/i.test(lower)) {
+    return 'Tables SQL manquantes côté InsForge. Exécutez le script insforge-shop-schema.sql sur votre base.'
+  }
+  return raw || 'Synchronisation InsForge impossible.'
 }
 
 const ShopContext = createContext(null)

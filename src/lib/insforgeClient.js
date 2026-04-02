@@ -1,7 +1,17 @@
 import { createClient } from '@insforge/sdk'
 
-const baseUrl = import.meta.env.VITE_INSFORGE_URL
-const anonKey = import.meta.env.VITE_INSFORGE_ANON_KEY
+/** Lit une variable Vite, sans espaces parasites (copier-coller Vercel / .env). */
+function readEnv(key) {
+  const v = import.meta.env[key]
+  if (v == null || typeof v !== 'string') return ''
+  return v.trim()
+}
+
+const baseUrlRaw = readEnv('VITE_INSFORGE_URL').replace(/\/+$/, '')
+const anonKeyRaw = readEnv('VITE_INSFORGE_ANON_KEY').replace(/^Bearer\s+/i, '')
+
+const baseUrl = baseUrlRaw
+const anonKey = anonKeyRaw
 
 const configured = Boolean(baseUrl && anonKey)
 
