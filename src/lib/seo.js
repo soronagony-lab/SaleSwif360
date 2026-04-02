@@ -1,8 +1,22 @@
 import { BRAND, DEFAULT_SITE_URL } from '@/lib/brand'
 
-/** Image Open Graph par défaut (aloès / bien-être, format 1,91:1) — si pas d’image produit */
-export const FOREVER_LIVING_OG_FALLBACK =
-  'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=1200&h=630&fit=crop&q=85&auto=format'
+/**
+ * Visuels OG / Twitter / LinkedIn / WhatsApp — fichiers dans /public/seo/
+ * (partage de liens : prévisualisation riche avec l’identité Succès Solution FLP).
+ */
+export const SEO_OG_IMAGES = {
+  /** Accueil — famille & Forever Kids */
+  default: '/seo/og-default.png',
+  /** Liste boutique / catalogue */
+  boutique: '/seo/og-boutique.png',
+  /** Page opportunité business */
+  opportunity: '/seo/og-opportunity.png',
+  /** Index blog & articles sans visuel dédié */
+  blog: '/seo/og-blog.png',
+}
+
+/** @deprecated Utiliser SEO_OG_IMAGES.default — conservé pour imports existants */
+export const FOREVER_LIVING_OG_FALLBACK = SEO_OG_IMAGES.default
 
 /** URL canonique de prod — surcharge avec VITE_SITE_URL si défini */
 export function getSiteOrigin() {
@@ -10,6 +24,15 @@ export function getSiteOrigin() {
   const fromEnv = import.meta.env.VITE_SITE_URL
   if (fromEnv && typeof fromEnv === 'string') return fromEnv.replace(/\/$/, '')
   return DEFAULT_SITE_URL
+}
+
+/** URL absolue pour Open Graph (image locale / ou URL externe). */
+export function absoluteOgUrl(base, src) {
+  if (!src || typeof src !== 'string') return ''
+  if (src.startsWith('http://') || src.startsWith('https://')) return src
+  const b = String(base || '').replace(/\/$/, '')
+  if (src.startsWith('/')) return `${b}${src}`
+  return `${b}/${src}`
 }
 
 export const SITE_DEFAULTS = {

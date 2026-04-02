@@ -3,27 +3,22 @@ import { BRAND } from '@/lib/brand'
 import { getArticleBySlug } from '@/data/blogArticles'
 import { productPath } from '@/lib/productSlug'
 import {
-  FOREVER_LIVING_OG_FALLBACK,
+  SEO_OG_IMAGES,
   SITE_DEFAULTS,
+  absoluteOgUrl,
   getSiteOrigin,
   setLinkCanonical,
   setMetaByName,
   setMetaByProperty,
 } from '@/lib/seo'
 
-const DEFAULT_OG_IMAGE = FOREVER_LIVING_OG_FALLBACK
-
-function absImageUrl(base, src) {
-  if (!src || typeof src !== 'string') return null
-  if (src.startsWith('http://') || src.startsWith('https://')) return src
-  if (src.startsWith('/')) return `${base}${src}`
-  return `${base}/${src}`
-}
-
 const JSON_LD_PRODUCT_ID = 'seo-jsonld-product'
 
+/** Visuels partagés au format carré 1:1 (1200×1200 recommandé pour les plateformes). */
+const OG_IMAGE_DIM = { w: '1200', h: '1200' }
+
 /**
- * Met à jour title + meta pour le SEO (SPA) — ciblage Côte d’Ivoire.
+ * Met à jour title + meta pour le SEO (SPA) — Open Graph, Twitter, aperçus WhatsApp / LinkedIn / Google.
  * @param {string | null} blogSlug — slug article (page détail blog)
  */
 export function SeoHead({ storePage, currentProduct, shopName, blogSlug }) {
@@ -37,7 +32,8 @@ export function SeoHead({ storePage, currentProduct, shopName, blogSlug }) {
     let title = defaultTitle
     let description = defaultDesc
     let path = '/'
-    let ogImage = DEFAULT_OG_IMAGE
+    let ogImage = absoluteOgUrl(base, SEO_OG_IMAGES.default)
+    let ogImageAlt = `${brand} — Forever Living Products, beauté et bien-être en Côte d’Ivoire`
     let keywords = SITE_DEFAULTS.keywords
     let ogType = 'website'
 
@@ -53,16 +49,22 @@ export function SeoHead({ storePage, currentProduct, shopName, blogSlug }) {
           : blogArticle.excerpt
       path = `/blog/${blogArticle.slug}`
       keywords = `${blogArticle.keywords}, blog ${brand}, Forever Living Côte d'Ivoire`
-      ogImage = blogArticle.heroImage || FOREVER_LIVING_OG_FALLBACK
+      /* Image de partage dédiée identité FLP (aperçus réseaux) */
+      ogImage = absoluteOgUrl(base, SEO_OG_IMAGES.blog)
+      ogImageAlt = `${blogArticle.title} — ${brand}, articles bien-être et Forever Living`
     } else if (storePage === 'blog') {
       title = `Blog bien-être & business — ${brand}`
       description = `Articles produits Forever Living, conseils santé naturelle et opportunité de distribution en Côte d'Ivoire. ${defaultDesc.slice(0, 120)}…`
       path = '/blog'
       keywords = `${SITE_DEFAULTS.keywords}, blog MLM éthique, conseils aloès, entrepreneuriat bien-être Abidjan`
+      ogImage = absoluteOgUrl(base, SEO_OG_IMAGES.blog)
+      ogImageAlt = `Blog bien-être et business — ${brand}`
     } else if (storePage === 'catalog') {
       title = `Boutique — ${brand}`
       description = `Découvrez le catalogue produits beauté, santé et bien-être ${brand} (Forever Living Products). Commande en Côte d’Ivoire, livraison et paiement à la réception.`
       path = '/boutique'
+      ogImage = absoluteOgUrl(base, SEO_OG_IMAGES.boutique)
+      ogImageAlt = `Boutique Forever Living — vitamines, soins, nutrition — ${brand}`
     } else if (storePage === 'opportunity') {
       title = `Opportunité business — ${brand}`
       {
@@ -71,6 +73,8 @@ export function SeoHead({ storePage, currentProduct, shopName, blogSlug }) {
           intro.length > 155 ? `${intro.slice(0, 152)}…` : intro
       }
       path = '/opportunite'
+      ogImage = absoluteOgUrl(base, SEO_OG_IMAGES.opportunity)
+      ogImageAlt = `Opportunité business Forever Living Products — ${brand}`
     } else if (storePage === 'product' && currentProduct) {
       const snippet =
         currentProduct.description ||
@@ -82,9 +86,16 @@ export function SeoHead({ storePage, currentProduct, shopName, blogSlug }) {
         (String(snippet).length > 155 ? '…' : '')
       path = productPath(currentProduct)
       const firstImg = currentProduct.images?.[0]
-      ogImage = absImageUrl(base, firstImg) || FOREVER_LIVING_OG_FALLBACK
+      ogImage =
+        absoluteOgUrl(base, firstImg) ||
+        absoluteOgUrl(base, SEO_OG_IMAGES.boutique)
+      ogImageAlt = `${currentProduct.name} — ${brand}, Forever Living Products`
       ogType = 'product'
       keywords = `${currentProduct.name}, Forever Living Products, ${SITE_DEFAULTS.keywords}, achat Côte d'Ivoire`
+    } else if (storePage === 'home') {
+      path = '/'
+      ogImage = absoluteOgUrl(base, SEO_OG_IMAGES.default)
+      ogImageAlt = `Bien-être au quotidien — Forever Kids & famille — ${brand}`
     }
 
     document.title = title
@@ -102,9 +113,10 @@ export function SeoHead({ storePage, currentProduct, shopName, blogSlug }) {
     setMetaByProperty('og:description', description)
     setMetaByProperty('og:url', `${base}${path}`)
     setMetaByProperty('og:image', ogImage)
-    setMetaByProperty('og:image:alt', title)
-    setMetaByProperty('og:image:width', '1200')
-    setMetaByProperty('og:image:height', '630')
+    setMetaByProperty('og:image:alt', ogImageAlt)
+    setMetaByProperty('og:image:width', OG_IMAGE_DIM.w)
+    setMetaByProperty('og:image:height', OG_IMAGE_DIM.h)
+    setMetaByProperty('og:image:type', 'image/png')
     if (ogImage.startsWith('https://')) {
       setMetaByProperty('og:image:secure_url', ogImage)
     }
@@ -119,6 +131,7 @@ export function SeoHead({ storePage, currentProduct, shopName, blogSlug }) {
     setMetaByName('twitter:title', title)
     setMetaByName('twitter:description', description)
     setMetaByName('twitter:image', ogImage)
+    setMetaByName('twitter:image:alt', ogImageAlt)
 
     setLinkCanonical(`${base}${path}`)
   }, [storePage, currentProduct, shopName, blogSlug])
@@ -135,7 +148,8 @@ export function SeoHead({ storePage, currentProduct, shopName, blogSlug }) {
     script.type = 'application/ld+json'
     const firstImg = currentProduct.images?.[0]
     const imageUrl =
-      absImageUrl(base, firstImg) || FOREVER_LIVING_OG_FALLBACK
+      absoluteOgUrl(base, firstImg) ||
+      absoluteOgUrl(base, SEO_OG_IMAGES.boutique)
     const desc =
       currentProduct.detailedDescription ||
       currentProduct.description ||
