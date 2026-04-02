@@ -10,6 +10,7 @@ import {
 import { insforge } from '@/lib/insforgeClient'
 import * as shopApi from '@/lib/shopInsforge'
 import { initialProducts } from '@/data/initialProducts'
+import { useAuth } from '@/context/AuthContext'
 
 const STORAGE_KEYS = {
   products: 'jachete_products',
@@ -40,6 +41,7 @@ const ShopContext = createContext(null)
 
 export function ShopProvider({ children }) {
   const remoteEnabled = Boolean(insforge)
+  const { refreshSession } = useAuth()
 
   const [products, setProducts] = useState(() =>
     loadJson(STORAGE_KEYS.products, initialProducts)
@@ -65,11 +67,12 @@ export function ShopProvider({ children }) {
     let cancelled = false
     ;(async () => {
       try {
-        const [p, o, s] = await Promise.all([
-          shopApi.fetchProducts(insforge),
-          shopApi.fetchOrders(insforge),
-          shopApi.fetchShopSettings(insforge),
-        ])
+        const { products: p, orders: o, settings: s } =
+          await shopApi.withInvalidTokenRecovery(
+            insforge,
+            () => shopApi.fetchAllShopRemote(insforge),
+            { onSessionCleared: refreshSession }
+          )
         if (cancelled) return
         skipPersistProducts.current = true
         skipPersistSettings.current = true
@@ -95,7 +98,7 @@ export function ShopProvider({ children }) {
     return () => {
       cancelled = true
     }
-  }, [remoteEnabled])
+  }, [remoteEnabled, refreshSession])
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.products, JSON.stringify(products))
@@ -117,7 +120,11 @@ export function ShopProvider({ children }) {
     }
     const t = setTimeout(async () => {
       try {
-        const next = await shopApi.persistProducts(insforge, products)
+        const next = await shopApi.withInvalidTokenRecovery(
+          insforge,
+          () => shopApi.persistProducts(insforge, products),
+          { onSessionCleared: refreshSession }
+        )
         const idsChanged =
           next.length !== products.length ||
           next.some((p, i) => p.id !== products[i]?.id)
@@ -130,7 +137,7 @@ export function ShopProvider({ children }) {
       }
     }, 900)
     return () => clearTimeout(t)
-  }, [products, remoteEnabled, remoteLoading])
+  }, [products, remoteEnabled, remoteLoading, refreshSession])
 
   useEffect(() => {
     if (!remoteEnabled || remoteLoading) return
@@ -140,13 +147,17 @@ export function ShopProvider({ children }) {
     }
     const t = setTimeout(async () => {
       try {
-        await shopApi.upsertShopSettings(insforge, settings)
+        await shopApi.withInvalidTokenRecovery(
+          insforge,
+          () => shopApi.upsertShopSettings(insforge, settings),
+          { onSessionCleared: refreshSession }
+        )
       } catch (e) {
         console.error('upsertShopSettings', e)
       }
     }, 700)
     return () => clearTimeout(t)
-  }, [settings, remoteEnabled, remoteLoading])
+  }, [settings, remoteEnabled, remoteLoading, refreshSession])
 
   const updateSettings = useCallback((patch) => {
     setSettings((s) => ({ ...s, ...patch }))
@@ -165,7 +176,11 @@ export function ShopProvider({ children }) {
 
     ;(async () => {
       try {
-        const saved = await shopApi.insertOrder(insforge, payload)
+        const saved = await shopApi.withInvalidTokenRecovery(
+          insforge,
+          () => shopApi.insertOrder(insforge, payload),
+          { onSessionCleared: refreshSession }
+        )
         if (saved) {
           setOrders((prev) =>
             prev.map((o) => (o.id === localId ? saved : o))
@@ -177,17 +192,23 @@ export function ShopProvider({ children }) {
     })()
 
     return localId
-  }, [])
+  }, [refreshSession])
 
   const patchOrderStatus = useCallback((orderId, newStatus) => {
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
     )
     if (!insforge) return
-    shopApi.updateOrderStatusDb(insforge, orderId, newStatus).catch((e) => {
-      console.error('updateOrderStatusDb', e)
-    })
-  }, [])
+    shopApi
+      .withInvalidTokenRecovery(
+        insforge,
+        () => shopApi.updateOrderStatusDb(insforge, orderId, newStatus),
+        { onSessionCleared: refreshSession }
+      )
+      .catch((e) => {
+        console.error('updateOrderStatusDb', e)
+      })
+  }, [refreshSession])
 
   const value = useMemo(
     () => ({
