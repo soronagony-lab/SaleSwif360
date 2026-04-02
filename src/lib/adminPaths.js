@@ -5,6 +5,7 @@ const SEGMENT_TO_PAGE = {
   clients: 'customers',
   marketing: 'marketing',
   logistique: 'logistics',
+  prospection: 'leads',
   parametres: 'settings',
 }
 
@@ -15,6 +16,7 @@ const PAGE_TO_PATH = {
   customers: '/admin/clients',
   marketing: '/admin/marketing',
   logistics: '/admin/logistique',
+  leads: '/admin/prospection',
   settings: '/admin/parametres',
 }
 

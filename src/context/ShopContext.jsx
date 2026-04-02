@@ -21,6 +21,7 @@ const STORAGE_KEYS = {
   products: 'ssflp_products',
   orders: 'ssflp_orders',
   settings: 'ssflp_settings',
+  businessLeads: 'ssflp_business_leads',
 }
 
 const defaultSettings = {
@@ -82,6 +83,9 @@ export function ShopProvider({ children }) {
     ...defaultSettings,
     ...loadJson(STORAGE_KEYS.settings, {}),
   }))
+  const [businessLeads, setBusinessLeads] = useState(() =>
+    loadJson(STORAGE_KEYS.businessLeads, [])
+  )
 
   const [remoteLoading, setRemoteLoading] = useState(remoteEnabled)
   const [remoteError, setRemoteError] = useState(null)
@@ -98,7 +102,7 @@ export function ShopProvider({ children }) {
     let cancelled = false
     ;(async () => {
       try {
-        const { products: p, orders: o, settings: s } =
+        const { products: p, orders: o, settings: s, businessLeads: bl } =
           await shopApi.fetchAllShopRemote(insforgeShop)
         if (cancelled) return
         skipPersistProducts.current = true
@@ -106,6 +110,7 @@ export function ShopProvider({ children }) {
         setProducts(p.length > 0 ? p : [])
         setOrders(applyOrderExtrasToOrders(o))
         setSettings({ ...defaultSettings, ...s })
+        setBusinessLeads(Array.isArray(bl) ? bl : [])
         setRemoteError(null)
       } catch (e) {
         if (cancelled) return
@@ -119,6 +124,7 @@ export function ShopProvider({ children }) {
           ...defaultSettings,
           ...loadJson(STORAGE_KEYS.settings, {}),
         })
+        setBusinessLeads(loadJson(STORAGE_KEYS.businessLeads, []))
       } finally {
         if (!cancelled) setRemoteLoading(false)
       }
@@ -140,6 +146,13 @@ export function ShopProvider({ children }) {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(settings))
   }, [settings])
+
+  useEffect(() => {
+    localStorage.setItem(
+      STORAGE_KEYS.businessLeads,
+      JSON.stringify(businessLeads)
+    )
+  }, [businessLeads])
 
   useEffect(() => {
     if (!remoteEnabled || remoteLoading) return
@@ -254,6 +267,70 @@ export function ShopProvider({ children }) {
     })
   }, [])
 
+  const submitBusinessLead = useCallback((payload) => {
+    const localId = Date.now()
+    const localLead = {
+      id: localId,
+      fullName: payload.fullName,
+      phone: payload.phone,
+      email: payload.email ?? '',
+      city: payload.city ?? '',
+      goal: payload.goal ?? '',
+      experience: payload.experience ?? '',
+      message: payload.message ?? '',
+      consent: Boolean(payload.consent),
+      status: 'Nouveau',
+      internalNote: '',
+      date: new Date().toLocaleString('fr-FR'),
+    }
+    setBusinessLeads((prev) => [localLead, ...prev])
+
+    if (!insforgeShop) return localId
+
+    ;(async () => {
+      try {
+        const saved = await shopApi.insertBusinessLead(insforgeShop, payload)
+        if (saved) {
+          setBusinessLeads((prev) =>
+            prev.map((l) => (l.id === localId ? saved : l))
+          )
+        }
+      } catch (e) {
+        console.error(
+          'insertBusinessLead (vérifiez la table business_leads sur InsForge)',
+          e
+        )
+      }
+    })()
+
+    return localId
+  }, [])
+
+  const patchBusinessLead = useCallback((leadId, patch) => {
+    setBusinessLeads((prev) =>
+      prev.map((l) => (l.id === leadId ? { ...l, ...patch } : l))
+    )
+    if (!insforgeShop) return
+    const dbPatch = {}
+    if (patch.status !== undefined) dbPatch.status = patch.status
+    if (patch.internalNote !== undefined)
+      dbPatch.internalNote = patch.internalNote
+    if (Object.keys(dbPatch).length === 0) return
+    shopApi
+      .updateBusinessLeadDb(insforgeShop, leadId, dbPatch)
+      .catch((e) => {
+        console.error('updateBusinessLeadDb', e)
+      })
+  }, [])
+
+  const deleteBusinessLead = useCallback((leadId) => {
+    setBusinessLeads((prev) => prev.filter((l) => l.id !== leadId))
+    if (!insforgeShop) return
+    shopApi.deleteBusinessLeadDb(insforgeShop, leadId).catch((e) => {
+      console.error('deleteBusinessLeadDb', e)
+    })
+  }, [])
+
   const value = useMemo(
     () => ({
       products,
@@ -266,6 +343,10 @@ export function ShopProvider({ children }) {
       patchOrderStatus,
       patchOrder,
       deleteOrder,
+      businessLeads,
+      submitBusinessLead,
+      patchBusinessLead,
+      deleteBusinessLead,
       remoteEnabled,
       remoteLoading,
       remoteError,
@@ -279,6 +360,10 @@ export function ShopProvider({ children }) {
       patchOrderStatus,
       patchOrder,
       deleteOrder,
+      businessLeads,
+      submitBusinessLead,
+      patchBusinessLead,
+      deleteBusinessLead,
       remoteEnabled,
       remoteLoading,
       remoteError,

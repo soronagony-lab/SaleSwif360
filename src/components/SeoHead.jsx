@@ -66,7 +66,7 @@ export function SeoHead({ storePage, currentProduct, shopName, blogSlug }) {
     } else if (storePage === 'opportunity') {
       title = `Opportunité business — ${brand}`
       {
-        const intro = BRAND.mlm.intro
+        const intro = `${BRAND.mlm.intro} Kit gratuit : formulaire de contact pour être rappelé(e).`
         description =
           intro.length > 155 ? `${intro.slice(0, 152)}…` : intro
       }

@@ -10,7 +10,16 @@ export async function fetchAllShopRemote(insforge) {
     fetchOrders(insforge),
     fetchShopSettings(insforge),
   ])
-  return { products, orders, settings }
+  let businessLeads = []
+  try {
+    businessLeads = await fetchBusinessLeads(insforge)
+  } catch (e) {
+    console.warn(
+      'fetchBusinessLeads (exécutez insforge-shop-schema.sql si la table manque)',
+      e
+    )
+  }
+  return { products, orders, settings, businessLeads }
 }
 
 function parseImagesColumn(raw) {
@@ -72,6 +81,25 @@ export function mapOrderRow(row) {
   }
 }
 
+export function mapBusinessLeadRow(row) {
+  if (!row) return null
+  const created = row.created_at ? new Date(row.created_at) : new Date()
+  return {
+    id: Number(row.id),
+    fullName: row.full_name,
+    phone: row.phone,
+    email: row.email ?? '',
+    city: row.city ?? '',
+    goal: row.goal ?? '',
+    experience: row.experience ?? '',
+    message: row.message ?? '',
+    consent: Boolean(row.consent),
+    status: row.status ?? 'Nouveau',
+    internalNote: row.internal_note ?? '',
+    date: created.toLocaleString('fr-FR'),
+  }
+}
+
 export function mapSettingsRow(row) {
   if (!row) return {}
   return {
@@ -121,6 +149,15 @@ export async function fetchShopSettings(insforge) {
   if (error) throw error
   const row = Array.isArray(data) ? data[0] : data
   return mapSettingsRow(row)
+}
+
+export async function fetchBusinessLeads(insforge) {
+  const { data, error } = await insforge.database
+    .from('business_leads')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data || []).map(mapBusinessLeadRow).filter(Boolean)
 }
 
 export async function persistProducts(insforge, products) {
@@ -204,6 +241,47 @@ export async function deleteOrderDb(insforge, orderId) {
     .from('orders')
     .delete()
     .eq('id', orderId)
+  if (error) throw error
+}
+
+export async function insertBusinessLead(insforge, payload) {
+  const row = {
+    full_name: payload.fullName,
+    phone: payload.phone,
+    email: payload.email || null,
+    city: payload.city || null,
+    goal: payload.goal || null,
+    experience: payload.experience || null,
+    message: payload.message || null,
+    consent: Boolean(payload.consent),
+    status: payload.status ?? 'Nouveau',
+  }
+  const { data, error } = await insforge.database
+    .from('business_leads')
+    .insert([row])
+    .select()
+  if (error) throw error
+  const inserted = data?.[0]
+  return inserted ? mapBusinessLeadRow(inserted) : null
+}
+
+export async function updateBusinessLeadDb(insforge, leadId, patch) {
+  const row = {}
+  if (patch.status !== undefined) row.status = patch.status
+  if (patch.internalNote !== undefined) row.internal_note = patch.internalNote
+  if (Object.keys(row).length === 0) return
+  const { error } = await insforge.database
+    .from('business_leads')
+    .update(row)
+    .eq('id', leadId)
+  if (error) throw error
+}
+
+export async function deleteBusinessLeadDb(insforge, leadId) {
+  const { error } = await insforge.database
+    .from('business_leads')
+    .delete()
+    .eq('id', leadId)
   if (error) throw error
 }
 

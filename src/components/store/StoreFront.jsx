@@ -16,6 +16,7 @@ import {
   Users,
   X,
 } from 'lucide-react'
+import { BusinessLeadForm } from '@/components/store/BusinessLeadForm'
 import { useShop } from '@/context/ShopContext'
 import { ProductCard } from '@/components/ProductCard'
 import { ProductImage } from '@/components/ProductImage'
@@ -99,6 +100,17 @@ export function StoreFront() {
     window.scrollTo(0, 0)
   }, [location.pathname])
 
+  useEffect(() => {
+    if (storePage !== 'opportunity') return
+    if (location.hash !== '#lead-form') return
+    const t = setTimeout(() => {
+      document
+        .getElementById('lead-form')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
+    return () => clearTimeout(t)
+  }, [storePage, location.hash, location.pathname])
+
   /** Anciennes URLs /produit/1 → URL canonique avec slug (3 premiers mots + id) */
   useEffect(() => {
     if (storePage !== 'product' || !currentProduct) return
@@ -158,16 +170,16 @@ export function StoreFront() {
     }`
 
   return (
-    <div className="min-h-screen bg-stone-50 font-sans pb-20 md:pb-0 text-stone-900">
+    <div className="min-h-screen bg-stone-50 font-sans pb-[max(5.5rem,env(safe-area-inset-bottom))] md:pb-0 text-stone-900">
       <SeoHead
         storePage={storePage}
         currentProduct={currentProduct}
         shopName={settings.shopName}
         blogSlug={storePage === 'blogArticle' ? blogSlug : null}
       />
-      <header className="bg-white/95 backdrop-blur sticky top-0 z-40 shadow-sm border-b border-emerald-100/80">
+      <header className="bg-white/95 backdrop-blur sticky top-0 z-40 shadow-sm border-b border-emerald-100/80 pt-[env(safe-area-inset-top)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16 md:h-[4.25rem]">
+          <div className="flex justify-between items-center min-h-[3.5rem] py-2 md:min-h-0 md:h-[4.25rem] md:py-0">
             <button
               type="button"
               className="flex items-center gap-2 cursor-pointer bg-transparent border-0 p-0 text-left"
@@ -222,7 +234,7 @@ export function StoreFront() {
             </nav>
             <button
               type="button"
-              className="md:hidden p-2 text-emerald-800"
+              className="md:hidden p-3 min-h-[44px] min-w-[44px] flex items-center justify-center text-emerald-800 rounded-xl"
               aria-label="Menu"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
@@ -287,7 +299,7 @@ export function StoreFront() {
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
         {storePage === 'home' && (
           <div className="space-y-12 md:space-y-16">
             <div className="relative rounded-3xl overflow-hidden shadow-xl ring-1 ring-emerald-900/10">
@@ -378,19 +390,26 @@ export function StoreFront() {
                     {BRAND.mlm.subtitle}
                   </p>
                 </div>
-                <div className="flex flex-col gap-3 shrink-0">
+                <div className="flex flex-col gap-3 shrink-0 w-full sm:w-auto">
                   <a
                     href={waLinkMlm}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 bg-amber-500 text-emerald-950 font-bold py-3.5 px-6 rounded-2xl hover:bg-amber-400 transition text-center shadow-lg"
+                    className="inline-flex items-center justify-center gap-2 bg-amber-500 text-emerald-950 font-bold min-h-[48px] py-3.5 px-6 rounded-2xl hover:bg-amber-400 transition text-center shadow-lg"
                   >
                     Parler à un conseiller
                   </a>
                   <button
                     type="button"
+                    onClick={() => navigate(`${PATHS.opportunity}#lead-form`)}
+                    className="inline-flex items-center justify-center gap-2 bg-white/15 text-white font-bold min-h-[48px] py-3.5 px-6 rounded-2xl border-2 border-white/35 hover:bg-white/20 transition w-full sm:w-auto"
+                  >
+                    Kit gratuit — être rappelé(e)
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => navigate(PATHS.opportunity)}
-                    className="text-emerald-100 font-medium py-2 text-sm underline-offset-4 hover:underline border-0 bg-transparent cursor-pointer"
+                    className="text-emerald-100 font-medium py-2 text-sm underline-offset-4 hover:underline border-0 bg-transparent cursor-pointer text-center sm:text-left"
                   >
                     Lire la présentation complète
                   </button>
@@ -440,46 +459,58 @@ export function StoreFront() {
         )}
 
         {storePage === 'opportunity' && (
-          <div className="max-w-3xl mx-auto space-y-10 pb-8">
-            <div className="text-center space-y-3">
+          <div className="max-w-5xl mx-auto space-y-8 sm:space-y-12 pb-6 sm:pb-10">
+            <div className="text-center space-y-3 px-1">
               <span className="inline-flex items-center gap-2 text-amber-700 font-bold text-xs uppercase tracking-widest">
-                <Users className="w-4 h-4" />
+                <Users className="w-4 h-4 shrink-0" />
                 Opportunité business
               </span>
-              <h1 className="text-3xl md:text-4xl font-extrabold text-emerald-950">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-emerald-950 leading-tight">
                 {BRAND.mlm.title}
               </h1>
-              <p className="text-stone-600 text-lg leading-relaxed">
+              <p className="text-stone-600 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto">
                 {BRAND.mlm.intro}
               </p>
             </div>
-            <ul className="space-y-4">
-              {BRAND.mlm.bullets.map((line) => (
-                <li
-                  key={line}
-                  className="flex gap-3 bg-white rounded-2xl border border-emerald-100 p-4 shadow-sm"
-                >
-                  <CheckCircle className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-stone-700 leading-relaxed">{line}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="rounded-2xl bg-amber-50 border border-amber-200 p-6 text-amber-950 text-sm leading-relaxed">
+
+            <BusinessLeadForm shopName={settings.shopName} />
+
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-emerald-950 mb-4 text-center sm:text-left">
+                Pourquoi nous rejoindre ?
+              </h2>
+              <ul className="space-y-3 sm:space-y-4">
+                {BRAND.mlm.bullets.map((line) => (
+                  <li
+                    key={line}
+                    className="flex gap-3 bg-white rounded-2xl border border-emerald-100 p-4 sm:p-5 shadow-sm"
+                  >
+                    <CheckCircle className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
+                    <span className="text-stone-700 leading-relaxed text-sm sm:text-base">
+                      {line}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="rounded-2xl bg-amber-50 border border-amber-200 p-5 sm:p-6 text-amber-950 text-xs sm:text-sm leading-relaxed">
               {BRAND.mlm.disclaimer}
             </div>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center">
               <a
                 href={waLinkMlm}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 bg-emerald-700 text-white font-bold py-4 px-8 rounded-2xl hover:bg-emerald-800 transition shadow-lg text-center"
+                className="inline-flex items-center justify-center gap-2 bg-emerald-700 text-white font-bold min-h-[52px] py-4 px-8 rounded-2xl hover:bg-emerald-800 transition shadow-lg text-center"
               >
                 {BRAND.mlm.ctaContact}
               </a>
               <button
                 type="button"
                 onClick={() => navigate(PATHS.catalog)}
-                className="inline-flex items-center justify-center font-semibold py-4 px-8 rounded-2xl border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                className="inline-flex items-center justify-center font-semibold min-h-[52px] py-4 px-8 rounded-2xl border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
               >
                 Commander des produits
               </button>

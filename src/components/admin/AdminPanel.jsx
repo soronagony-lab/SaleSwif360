@@ -24,6 +24,8 @@ import {
   LogOut,
   User,
   Users,
+  Target,
+  Mail,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useShop } from '@/context/ShopContext'
@@ -58,25 +60,62 @@ function exportCsv(filename, rows) {
   URL.revokeObjectURL(a.href)
 }
 
+const LEAD_GOAL_LABELS = {
+  revenus_complementaires: 'Revenus complémentaires',
+  remplacer_salaire: 'Remplacer ou compléter un salaire',
+  entrepreneuriat: 'Projet entrepreneurial',
+  decouverte: 'Découverte / information',
+}
+
+const LEAD_EXP_LABELS = {
+  debutant: 'Débutant',
+  vente_en_ligne: 'Vente en ligne / réseau',
+  experimente: 'Expérimenté vente directe',
+}
+
+function leadWhatsAppHref(lead, shopName) {
+  const phone = normalizePhoneForWhatsApp(lead.phone)
+  const goal = LEAD_GOAL_LABELS[lead.goal] || lead.goal || '—'
+  const msg = `Bonjour ${lead.fullName},\n\nMerci pour votre demande sur *${shopName}* (opportunité business).\nObjectif indiqué : ${goal}.\nJe reviens vers vous très vite.\n\n— ${shopName}`
+  return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
+}
+
+function leadMailtoHref(lead, shopName) {
+  const subject = encodeURIComponent(
+    `${shopName} — Opportunité business`
+  )
+  const body = encodeURIComponent(
+    `Bonjour ${lead.fullName},\n\nMerci pour votre intérêt.\n\n---\nTél. : ${lead.phone}\nE-mail : ${lead.email || '—'}\nVille : ${lead.city || '—'}\nObjectif : ${LEAD_GOAL_LABELS[lead.goal] || lead.goal || '—'}\nExpérience : ${LEAD_EXP_LABELS[lead.experience] || lead.experience || '—'}\nMessage : ${lead.message || '—'}\n`
+  )
+  if (lead.email && String(lead.email).includes('@')) {
+    return `mailto:${lead.email}?subject=${subject}&body=${body}`
+  }
+  return `mailto:?subject=${subject}&body=${body}`
+}
+
 function AdminNavLink({ icon, label, active, onClick, badge }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full flex items-center px-4 py-3.5 rounded-xl transition-all duration-200 shrink-0 md:shrink ${
+      className={`w-full min-h-[44px] flex items-center gap-2 md:gap-3 px-3 sm:px-4 py-2.5 rounded-xl transition-all duration-200 shrink-0 md:shrink ${
         active
           ? 'bg-teal-800 text-white shadow-md font-bold'
           : 'text-teal-200 hover:bg-teal-800/50 hover:text-white font-medium'
       }`}
     >
-      <span className={`mr-3 ${active ? 'text-orange-400' : ''}`}>{icon}</span>
-      <span className="hidden md:inline">{label}</span>
+      <span className={`shrink-0 ${active ? 'text-orange-400' : ''}`}>
+        {icon}
+      </span>
+      <span className="text-[11px] sm:text-xs md:text-sm leading-tight text-left flex-1 min-w-0 md:block">
+        {label}
+      </span>
       {badge !== undefined && badge > 0 && (
         <span
-          className={`ml-auto text-xs font-black px-2.5 py-1 rounded-full hidden md:inline ${
+          className={`shrink-0 text-[10px] font-black px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-full ${
             active
               ? 'bg-orange-500 text-white'
-              : 'bg-teal-800 text-teal-100'
+              : 'bg-teal-950/80 text-teal-100'
           }`}
         >
           {badge}
@@ -86,23 +125,26 @@ function AdminNavLink({ icon, label, active, onClick, badge }) {
   )
 }
 
-function StatCard({ title, value, icon, color }) {
+function StatCard({ title, value, icon, color, hint }) {
   return (
-    <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-center">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-center h-full">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
         <div
-          className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center`}
+          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${color} flex items-center justify-center`}
         >
           {icon}
         </div>
       </div>
       <div>
-        <div className="text-2xl md:text-3xl font-black text-gray-900">
+        <div className="text-xl sm:text-2xl md:text-3xl font-black text-gray-900">
           {value}
         </div>
         <div className="text-gray-500 text-xs md:text-sm font-medium mt-1">
           {title}
         </div>
+        {hint ? (
+          <div className="text-xs font-bold text-rose-700 mt-1">{hint}</div>
+        ) : null}
       </div>
     </div>
   )
@@ -129,6 +171,9 @@ export function AdminPanel({ onLeave }) {
     updateSettings,
     patchOrder,
     deleteOrder,
+    businessLeads,
+    patchBusinessLead,
+    deleteBusinessLead,
   } = useShop()
 
   const { config, setConfig } = useAdminConfig()
@@ -212,6 +257,11 @@ export function AdminPanel({ onLeave }) {
     }
     return Array.from(s).sort((a, b) => a.localeCompare(b, 'fr'))
   }, [orders])
+
+  const newLeadsCount = useMemo(
+    () => businessLeads.filter((l) => l.status === 'Nouveau').length,
+    [businessLeads]
+  )
 
   const filteredCustomers = useMemo(() => {
     let rows = customerAggregates
@@ -385,6 +435,7 @@ export function AdminPanel({ onLeave }) {
           customers: 'Base clients',
           marketing: 'Marketing & relances',
           logistics: 'Logistique',
+          leads: 'Prospection business',
           settings: 'Configuration',
         }[adminPage] || ''
 
@@ -397,7 +448,7 @@ export function AdminPanel({ onLeave }) {
             {settings.shopName}
           </span>
         </div>
-        <nav className="flex-1 py-4 px-2 md:px-4 flex flex-row md:flex-col gap-1 md:gap-2 overflow-x-auto md:overflow-y-auto">
+        <nav className="flex-1 py-3 md:py-4 px-2 md:px-4 flex flex-row md:flex-col gap-1 md:gap-2 overflow-x-auto md:overflow-y-auto pb-2">
           <AdminNavLink
             icon={<LayoutDashboard className="w-5 h-5" />}
             label="Tableau de bord"
@@ -422,6 +473,13 @@ export function AdminPanel({ onLeave }) {
             label="Clients"
             active={adminPage === 'customers'}
             onClick={() => navigate(pathForAdminPage('customers'))}
+          />
+          <AdminNavLink
+            icon={<Target className="w-5 h-5" />}
+            label="Prospection"
+            active={adminPage === 'leads'}
+            onClick={() => navigate(pathForAdminPage('leads'))}
+            badge={newLeadsCount}
           />
           <AdminNavLink
             icon={<Megaphone className="w-5 h-5" />}
@@ -499,7 +557,7 @@ export function AdminPanel({ onLeave }) {
         <div className="flex-1 overflow-auto p-4 md:p-8 bg-gray-50">
           {adminPage === 'dashboard' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
                 <StatCard
                   title="Revenus (livré)"
                   value={formatPrice(totalRevenue)}
@@ -530,6 +588,23 @@ export function AdminPanel({ onLeave }) {
                   icon={<Users className="text-purple-500 w-5 h-5" />}
                   color="bg-purple-50"
                 />
+                <button
+                  type="button"
+                  onClick={() => navigate(pathForAdminPage('leads'))}
+                  className="text-left border-0 bg-transparent p-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 rounded-2xl w-full min-h-[44px]"
+                >
+                  <StatCard
+                    title="Prospection"
+                    value={businessLeads.length}
+                    icon={<Target className="text-rose-600 w-5 h-5" />}
+                    color="bg-rose-50"
+                    hint={
+                      newLeadsCount > 0
+                        ? `${newLeadsCount} nouveau(x)`
+                        : undefined
+                    }
+                  />
+                </button>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -1153,6 +1228,280 @@ export function AdminPanel({ onLeave }) {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {adminPage === 'leads' && (
+            <div className="space-y-4">
+              <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 bg-white rounded-2xl shadow-sm border border-gray-200">
+                <div>
+                  <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                    <Target className="w-5 h-5 text-rose-600 shrink-0" />
+                    Prospection business
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Formulaire lead magnet sur{' '}
+                    <span className="font-mono text-xs">/opportunite</span> —
+                    répondez par WhatsApp ou e-mail.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-xl min-h-[44px] w-full sm:w-auto shrink-0"
+                  onClick={() => {
+                    const lines = [
+                      [
+                        'Date',
+                        'Nom',
+                        'Téléphone',
+                        'E-mail',
+                        'Ville',
+                        'Objectif',
+                        'Expérience',
+                        'Statut',
+                        'Message',
+                      ].join(';'),
+                      ...businessLeads.map((l) =>
+                        [
+                          l.date,
+                          l.fullName,
+                          l.phone,
+                          l.email || '',
+                          l.city || '',
+                          LEAD_GOAL_LABELS[l.goal] || l.goal || '',
+                          LEAD_EXP_LABELS[l.experience] || l.experience || '',
+                          l.status,
+                          (l.message || '').replace(/;/g, ','),
+                        ].join(';')
+                      ),
+                    ]
+                    exportCsv(
+                      `prospects-${new Date().toISOString().slice(0, 10)}.csv`,
+                      lines
+                    )
+                  }}
+                >
+                  <Download className="w-4 h-4" /> Export CSV
+                </Button>
+              </div>
+
+              {businessLeads.length === 0 && (
+                <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center text-gray-500">
+                  Aucun prospect pour le moment. Les demandes du formulaire
+                  apparaîtront ici.
+                </div>
+              )}
+
+              <div className="md:hidden space-y-3">
+                {businessLeads.map((lead) => (
+                  <div
+                    key={lead.id}
+                    className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-3"
+                  >
+                    <div className="flex justify-between items-start gap-2">
+                      <div>
+                        <p className="font-bold text-gray-900">{lead.fullName}</p>
+                        <p className="text-xs text-gray-500">{lead.date}</p>
+                      </div>
+                      <select
+                        value={lead.status}
+                        onChange={(e) =>
+                          patchBusinessLead(lead.id, {
+                            status: e.target.value,
+                          })
+                        }
+                        className="text-xs font-bold px-2 py-2 rounded-lg border border-gray-200 bg-gray-50 min-h-[44px]"
+                      >
+                        <option value="Nouveau">Nouveau</option>
+                        <option value="Contacté">Contacté</option>
+                        <option value="Qualifié">Qualifié</option>
+                        <option value="Archivé">Archivé</option>
+                      </select>
+                    </div>
+                    <p className="text-sm text-gray-700">
+                      <Phone className="inline w-3.5 h-3.5 mr-1" />
+                      {lead.phone}
+                    </p>
+                    {lead.email ? (
+                      <p className="text-sm text-gray-600 break-all">
+                        <Mail className="inline w-3.5 h-3.5 mr-1" />
+                        {lead.email}
+                      </p>
+                    ) : null}
+                    <p className="text-xs text-gray-600">
+                      {LEAD_GOAL_LABELS[lead.goal] || lead.goal || '—'} ·{' '}
+                      {LEAD_EXP_LABELS[lead.experience] || lead.experience || '—'}
+                    </p>
+                    {lead.message ? (
+                      <p className="text-xs text-gray-500 border-t border-gray-100 pt-2">
+                        {lead.message}
+                      </p>
+                    ) : null}
+                    <textarea
+                      defaultValue={lead.internalNote || ''}
+                      onBlur={(e) =>
+                        patchBusinessLead(lead.id, {
+                          internalNote: e.target.value,
+                        })
+                      }
+                      placeholder="Note interne…"
+                      rows={2}
+                      className="w-full text-sm rounded-xl border border-gray-200 bg-gray-50 px-3 py-2"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={leadWhatsAppHref(lead, settings.shopName)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex flex-1 min-w-[120px] min-h-[44px] items-center justify-center gap-1.5 bg-[#25D366] text-white px-3 py-2 rounded-xl font-bold text-xs"
+                      >
+                        <MessageCircle className="w-4 h-4" /> WhatsApp
+                      </a>
+                      <a
+                        href={leadMailtoHref(lead, settings.shopName)}
+                        className="inline-flex flex-1 min-w-[120px] min-h-[44px] items-center justify-center gap-1.5 bg-gray-100 text-gray-800 px-3 py-2 rounded-xl font-bold text-xs"
+                      >
+                        <Mail className="w-4 h-4" /> E-mail
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              'Supprimer ce prospect ?'
+                            )
+                          ) {
+                            deleteBusinessLead(lead.id)
+                          }
+                        }}
+                        className="inline-flex flex-1 min-w-[120px] min-h-[44px] items-center justify-center gap-1 bg-red-50 text-red-700 px-3 py-2 rounded-xl font-bold text-xs border-0"
+                      >
+                        <Trash2 className="w-4 h-4" /> Supprimer
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left min-w-[920px]">
+                    <thead>
+                      <tr className="bg-gray-50 text-gray-500 text-xs uppercase border-b border-gray-200">
+                        <th className="p-3 font-bold">Date</th>
+                        <th className="p-3 font-bold">Nom</th>
+                        <th className="p-3 font-bold">Contact</th>
+                        <th className="p-3 font-bold">Profil</th>
+                        <th className="p-3 font-bold">Statut</th>
+                        <th className="p-3 font-bold">Note</th>
+                        <th className="p-3 font-bold text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-sm divide-y divide-gray-100">
+                      {businessLeads.map((lead) => (
+                        <tr key={lead.id} className="hover:bg-gray-50">
+                          <td className="p-3 align-top text-xs text-gray-500 whitespace-nowrap">
+                            {lead.date}
+                          </td>
+                          <td className="p-3 align-top font-bold text-gray-900">
+                            {lead.fullName}
+                          </td>
+                          <td className="p-3 align-top">
+                            <div className="text-gray-800">{lead.phone}</div>
+                            <div className="text-xs text-gray-500 break-all">
+                              {lead.email || '—'}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {lead.city || '—'}
+                            </div>
+                          </td>
+                          <td className="p-3 align-top text-xs text-gray-700 max-w-[200px]">
+                            <div>
+                              {LEAD_GOAL_LABELS[lead.goal] || lead.goal || '—'}
+                            </div>
+                            <div className="text-gray-500 mt-1">
+                              {LEAD_EXP_LABELS[lead.experience] ||
+                                lead.experience ||
+                                '—'}
+                            </div>
+                            {lead.message ? (
+                              <div className="mt-2 text-gray-500 line-clamp-2">
+                                {lead.message}
+                              </div>
+                            ) : null}
+                          </td>
+                          <td className="p-3 align-top">
+                            <select
+                              value={lead.status}
+                              onChange={(e) =>
+                                patchBusinessLead(lead.id, {
+                                  status: e.target.value,
+                                })
+                              }
+                              className="text-xs font-bold px-2 py-1.5 rounded-lg border border-gray-200 bg-white"
+                            >
+                              <option value="Nouveau">Nouveau</option>
+                              <option value="Contacté">Contacté</option>
+                              <option value="Qualifié">Qualifié</option>
+                              <option value="Archivé">Archivé</option>
+                            </select>
+                          </td>
+                          <td className="p-3 align-top text-xs max-w-[180px]">
+                            <textarea
+                              defaultValue={lead.internalNote || ''}
+                              onBlur={(e) =>
+                                patchBusinessLead(lead.id, {
+                                  internalNote: e.target.value,
+                                })
+                              }
+                              rows={2}
+                              className="w-full rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 text-xs"
+                              placeholder="Résumé d’appel…"
+                            />
+                          </td>
+                          <td className="p-3 align-top text-right">
+                            <div className="flex flex-wrap gap-1 justify-end">
+                              <a
+                                href={leadWhatsAppHref(lead, settings.shopName)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center bg-[#25D366] text-white p-2 rounded-lg"
+                                title="WhatsApp"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </a>
+                              <a
+                                href={leadMailtoHref(lead, settings.shopName)}
+                                className="inline-flex items-center justify-center bg-gray-100 text-gray-800 p-2 rounded-lg"
+                                title="E-mail"
+                              >
+                                <Mail className="w-4 h-4" />
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (
+                                    window.confirm(
+                                      'Supprimer ce prospect ?'
+                                    )
+                                  ) {
+                                    deleteBusinessLead(lead.id)
+                                  }
+                                }}
+                                className="inline-flex items-center justify-center bg-red-50 text-red-700 p-2 rounded-lg border-0 cursor-pointer"
+                                title="Supprimer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
