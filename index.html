@@ -1,19 +1,108 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr-CI">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Boutique en ligne en Côte d’Ivoire : commandez en ligne, livraison à Abidjan et en CI. Paiement à la réception, sans carte bancaire — J'achète.ci."
+    />
+    <meta
+      name="keywords"
+      content="achat en ligne Côte d'Ivoire, e-commerce Abidjan, paiement à la livraison, livraison Abidjan, boutique en ligne CI, J'achète.ci, COD Côte d'Ivoire"
+    />
+    <meta name="author" content="J'achète.ci" />
+    <meta name="geo.region" content="CI" />
+    <meta name="geo.placename" content="Abidjan, Côte d'Ivoire" />
+    <meta name="language" content="French" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://jachete.ci/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="fr_CI" />
+    <meta property="og:site_name" content="J'achète.ci" />
+    <meta
+      property="og:title"
+      content="J'achète.ci — Achat en ligne, paiement à la livraison en Côte d’Ivoire"
+    />
+    <meta
+      property="og:description"
+      content="Découvrez nos produits, commandez depuis Abidjan ou partout en CI et payez uniquement à la livraison."
+    />
+    <meta property="og:url" content="https://jachete.ci/" />
+    <meta
+      property="og:image"
+      content="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200&q=80&auto=format"
+    />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="J'achète.ci — E-commerce Côte d’Ivoire"
+    />
+    <meta
+      name="twitter:description"
+      content="Boutique en ligne avec livraison en Côte d’Ivoire et paiement à la réception."
+    />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
       rel="stylesheet"
     />
-    <title>J'achète.ci — Paiement à la livraison</title>
+
+    <title>J'achète.ci — Paiement à la livraison en Côte d’Ivoire</title>
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "OnlineStore",
+            "@id": "https://jachete.ci/#store",
+            "name": "J'achète.ci",
+            "description": "Boutique en ligne en Côte d'Ivoire — livraison et paiement à la réception.",
+            "url": "https://jachete.ci/",
+            "logo": "https://jachete.ci/favicon.svg",
+            "priceCurrency": "XOF",
+            "areaServed": {
+              "@type": "Country",
+              "name": "Côte d'Ivoire",
+              "sameAs": "https://en.wikipedia.org/wiki/Ivory_Coast"
+            },
+            "availableChannel": {
+              "@type": "ServiceChannel",
+              "serviceLocation": {
+                "@type": "Place",
+                "name": "Côte d'Ivoire"
+              }
+            }
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://jachete.ci/#website",
+            "url": "https://jachete.ci/",
+            "name": "J'achète.ci",
+            "inLanguage": "fr-CI",
+            "publisher": { "@id": "https://jachete.ci/#store" }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <img
+        height="1"
+        width="1"
+        style="display: none"
+        src="https://www.facebook.com/tr?id=1601177617317072&amp;ev=PageView&amp;noscript=1"
+        alt=""
+      />
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

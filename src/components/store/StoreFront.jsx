@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   CheckCircle,
   ChevronLeft,
@@ -18,9 +18,18 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { OrderModal } from '@/components/store/OrderModal'
 import { AdminPinModal } from '@/components/store/AdminPinModal'
+import { SeoHead } from '@/components/SeoHead'
+import {
+  initFacebookPixel,
+  resolvePixelId,
+  trackInitiateCheckout,
+  trackPageView,
+  trackPurchase,
+  trackViewContent,
+} from '@/lib/facebookPixel'
 
 export function StoreFront({ onEnterAdmin }) {
-  const { products, setOrders, orders } = useShop()
+  const { products, setOrders, orders, settings } = useShop()
   const [storePage, setStorePage] = useState('home')
   const [storeBackPage, setStoreBackPage] = useState('home')
   const [currentProduct, setCurrentProduct] = useState(null)
@@ -30,6 +39,25 @@ export function StoreFront({ onEnterAdmin }) {
   const [orderModalOpen, setOrderModalOpen] = useState(false)
   const [orderProduct, setOrderProduct] = useState(null)
   const [pinOpen, setPinOpen] = useState(false)
+
+  const pixelId = resolvePixelId(settings.facebookPixelId)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      await initFacebookPixel(pixelId)
+      if (cancelled || typeof window === 'undefined' || !window.fbq) return
+      trackPageView()
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [pixelId, storePage, currentProduct?.id])
+
+  useEffect(() => {
+    if (storePage !== 'product' || !currentProduct) return
+    trackViewContent(currentProduct)
+  }, [storePage, currentProduct])
 
   const popularProducts = useMemo(
     () => products.filter((p) => (p.stock || 0) > 0).slice(0, 4),
@@ -59,15 +87,27 @@ export function StoreFront({ onEnterAdmin }) {
   const openOrder = (product) => {
     setOrderProduct(product)
     setOrderModalOpen(true)
+    trackInitiateCheckout(product)
   }
 
   const handleOrderSubmit = (payload) => {
     const newOrder = { id: Date.now(), ...payload }
     setOrders([newOrder, ...orders])
+    trackPurchase({
+      id: newOrder.id,
+      productId: payload.productId,
+      productName: payload.productName,
+      price: payload.price,
+    })
   }
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans pb-20 md:pb-0">
+      <SeoHead
+        storePage={storePage}
+        currentProduct={currentProduct}
+        shopName={settings.shopName}
+      />
       <header className="bg-white sticky top-0 z-40 shadow-sm border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">

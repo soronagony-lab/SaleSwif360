@@ -19,7 +19,7 @@ const defaultSettings = {
   whatsApp: '+2250102030405',
   relanceMessage:
     "Bonjour ! Vous avez regardé nos produits récemment. Profitez de -10% aujourd'hui avec le code PROMO10.",
-  facebookPixelId: '',
+  facebookPixelId: '1601177617317072',
   ga4Id: '',
 }
 
