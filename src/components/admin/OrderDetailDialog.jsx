@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { formatPrice, normalizePhoneForWhatsApp } from '@/lib/format'
 import {
   MessageCircle,
+  ShoppingBag,
   Trash2,
   Truck,
   ExternalLink,
@@ -139,48 +140,66 @@ export function OrderDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl sm:max-w-xl"
+        className="flex max-h-[92vh] max-w-lg flex-col overflow-hidden gap-0 p-0 sm:max-w-xl"
         showClose
       >
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            Commande #{String(order.id).slice(-5)}
-          </DialogTitle>
-          <DialogDescription>
-            {order.date} — {order.customerName}
-          </DialogDescription>
-        </DialogHeader>
+        <div className="relative shrink-0 overflow-hidden bg-gradient-to-br from-teal-700 via-teal-800 to-slate-900 px-6 pb-6 pt-7 text-white">
+          <div
+            className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-white/10 blur-3xl"
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute -bottom-8 left-1/4 h-24 w-48 rounded-full bg-orange-400/20 blur-2xl"
+            aria-hidden
+          />
+          <DialogHeader className="flex-row items-start gap-4 space-y-0 border-0 p-0 text-left">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-2 ring-white/25 shadow-lg backdrop-blur-sm">
+              <ShoppingBag className="h-7 w-7 text-white" strokeWidth={2} />
+            </div>
+            <div className="min-w-0 flex-1 pt-0.5 pr-10">
+              <DialogTitle className="text-xl font-bold tracking-tight text-white">
+                Commande #{String(order.id).slice(-5)}
+              </DialogTitle>
+              <DialogDescription className="mt-1.5 text-sm text-teal-100/95">
+                {order.date} — {order.customerName}
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+        </div>
 
-        <div className="space-y-4 px-1 pb-2">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-            <div>
-              <span className="text-gray-500 text-xs font-bold uppercase">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-gradient-to-b from-slate-50/90 to-white px-5 py-5 sm:px-6">
+          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+            <div className="rounded-2xl border border-gray-100/90 bg-white p-4 shadow-sm">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-teal-700">
                 Client
               </span>
-              <p className="font-bold text-gray-900">{order.customerName}</p>
+              <p className="mt-1 font-bold text-gray-900">{order.customerName}</p>
               <p className="text-gray-600">{order.phone}</p>
             </div>
-            <div>
-              <span className="text-gray-500 text-xs font-bold uppercase">
+            <div className="rounded-2xl border border-gray-100/90 bg-white p-4 shadow-sm">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-teal-700">
                 Livraison
               </span>
-              <p className="font-medium text-gray-800">{order.city}</p>
-              <p className="text-gray-600 text-xs">{order.address}</p>
+              <p className="mt-1 font-medium text-gray-800">{order.city}</p>
+              <p className="text-gray-600 text-xs leading-relaxed">{order.address}</p>
             </div>
           </div>
 
-          <div className="bg-orange-50 border border-orange-100 rounded-xl p-4">
-            <p className="text-xs font-bold text-orange-800 uppercase mb-1">
-              Produit commandé sur le site
+          <div className="rounded-2xl border border-orange-200/80 bg-gradient-to-br from-orange-50 to-amber-50/80 p-4 shadow-sm ring-1 ring-orange-100/50">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-orange-900/90">
+              Produit commandé
             </p>
-            <p className="font-bold text-gray-900">{order.productName}</p>
-            <p className="text-orange-600 font-black mt-1">
+            <p className="mt-1 font-bold text-gray-900">{order.productName}</p>
+            <p className="mt-1 text-lg font-black text-orange-600">
               {formatPrice(order.price)}
             </p>
           </div>
 
-          <div>
-            <Label className="mb-1.5 block">Statut</Label>
+          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+            <Label className="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-500">
+              Statut
+            </Label>
             <select
               value={order.status}
               onChange={(e) =>
@@ -211,9 +230,11 @@ export function OrderDetailDialog({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:grid-cols-2">
             <div>
-              <Label className="mb-1.5 block">Zone de livraison</Label>
+              <Label className="mb-1.5 block text-xs font-semibold text-gray-600">
+                Zone de livraison
+              </Label>
               <select
                 value={order.deliveryZoneId ?? ''}
                 onChange={(e) =>
@@ -221,7 +242,7 @@ export function OrderDetailDialog({
                     deliveryZoneId: e.target.value || null,
                   })
                 }
-                className="w-full text-sm font-medium px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
               >
                 <option value="">— Non définie —</option>
                 {(zones || []).map((z) => (
@@ -232,7 +253,7 @@ export function OrderDetailDialog({
               </select>
             </div>
             <div>
-              <Label className="mb-1.5 flex items-center gap-1">
+              <Label className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-gray-600">
                 <Truck className="w-3.5 h-3.5" /> Livreur
               </Label>
               <select
@@ -242,7 +263,7 @@ export function OrderDetailDialog({
                     courierId: e.target.value || null,
                   })
                 }
-                className="w-full text-sm font-medium px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
               >
                 <option value="">— Aucun —</option>
                 {activeCouriers.map((c) => (
@@ -255,8 +276,10 @@ export function OrderDetailDialog({
             </div>
           </div>
 
-          <div>
-            <Label className="mb-1.5 block">Note interne</Label>
+          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+            <Label className="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-500">
+              Note interne
+            </Label>
             <textarea
               value={order.internalNote ?? ''}
               onChange={(e) =>
@@ -264,11 +287,11 @@ export function OrderDetailDialog({
               }
               rows={3}
               placeholder="Instructions internes, créneau, maturité client (business), etc."
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus-visible:border-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/30"
+              className="w-full rounded-xl border border-gray-200 bg-slate-50/80 px-3 py-2.5 text-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-500/25"
             />
           </div>
 
-          <div className="border border-teal-200 rounded-xl p-4 bg-gradient-to-br from-teal-50/90 to-white">
+          <div className="rounded-2xl border border-teal-200/90 bg-gradient-to-br from-teal-50/95 via-white to-emerald-50/40 p-4 shadow-[0_4px_24px_-8px_rgba(13,148,136,0.2)] ring-1 ring-teal-100/90">
             <p className="text-xs font-bold text-teal-900 uppercase tracking-wide mb-1">
               Échange avec le prospect (lié à cette commande)
             </p>
@@ -357,8 +380,10 @@ export function OrderDetailDialog({
             </div>
           </div>
 
-          <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/80">
-            <Label className="mb-2 block">Relance générique (modèles marketing)</Label>
+          <div className="rounded-2xl border border-gray-200/80 bg-gradient-to-br from-gray-50 to-slate-50/90 p-4 shadow-sm">
+            <Label className="mb-2 block text-xs font-bold uppercase tracking-wide text-gray-600">
+              Relance générique (modèles marketing)
+            </Label>
             <div className="flex flex-col sm:flex-row gap-2">
               <select
                 value={relanceTemplateId}
@@ -382,23 +407,24 @@ export function OrderDetailDialog({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 rounded-2xl border border-dashed border-teal-200/70 bg-teal-50/30 p-3">
             <a
               href={orderWhatsHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white px-4 py-2.5 rounded-xl font-bold text-sm min-h-[44px]"
+              className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-teal-800 hover:shadow-lg"
             >
               <MessageCircle className="w-4 h-4" /> Message commande (récap)
             </a>
           </div>
+          </div>
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between">
+        <DialogFooter className="shrink-0 flex-col gap-3 border-t border-gray-200/90 bg-white px-5 py-4 sm:flex-row sm:justify-between sm:px-6">
           <Button
             type="button"
             variant="outline"
-            className="border-red-200 text-red-700 hover:bg-red-50 min-h-[44px]"
+            className="min-h-[44px] rounded-xl border-red-200 text-red-700 hover:bg-red-50"
             onClick={() => {
               if (
                 window.confirm(
@@ -414,8 +440,7 @@ export function OrderDetailDialog({
           </Button>
           <Button
             type="button"
-            variant="secondary"
-            className="rounded-xl min-h-[44px]"
+            className="min-h-[44px] rounded-xl bg-teal-800 hover:bg-teal-900"
             onClick={() => onOpenChange(false)}
           >
             Fermer

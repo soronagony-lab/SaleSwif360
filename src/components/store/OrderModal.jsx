@@ -88,40 +88,50 @@ export function OrderModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent showClose={!success} className="overflow-hidden p-0 gap-0">
+      <DialogContent
+        showClose={!success}
+        className="max-w-md gap-0 overflow-hidden rounded-[1.75rem] border-0 p-0 shadow-[0_25px_80px_-12px_rgba(13,148,136,0.35)]"
+      >
         {success ? (
-          <div className="p-8 text-center flex flex-col items-center">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
-              <CheckCircle className="w-12 h-12 text-green-500" />
+          <div className="flex flex-col items-center bg-gradient-to-b from-emerald-50/90 to-white px-8 py-10 text-center">
+            <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 shadow-inner ring-4 ring-white">
+              <CheckCircle className="h-14 w-14 text-emerald-600" />
             </div>
-            <h3 className="text-3xl font-extrabold text-gray-900 mb-3">
+            <h3 className="mb-3 text-3xl font-extrabold tracking-tight text-gray-900">
               Félicitations ! 🎉
             </h3>
-            <p className="text-gray-600 mb-8 text-lg">
+            <p className="mb-8 text-lg leading-relaxed text-gray-600">
               Votre commande a été enregistrée avec succès.
             </p>
-            <div className="bg-amber-50 rounded-2xl p-4 mb-8 w-full border border-amber-100">
-              <p className="text-amber-950 text-sm font-medium flex items-start">
-                <MessageCircle className="w-5 h-5 mr-2 flex-shrink-0 text-amber-600 mt-0.5" />
+            <div className="mb-8 w-full rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50/50 p-4 shadow-sm">
+              <p className="flex items-start text-left text-sm font-medium text-amber-950">
+                <MessageCircle className="mr-2 mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
                 Notre équipe va vous contacter très vite sur WhatsApp ou par
                 appel pour confirmer la livraison.
               </p>
             </div>
             <Button
               variant="default"
-              className="w-full rounded-xl py-6 text-base"
+              className="w-full rounded-xl py-6 text-base shadow-md"
               onClick={handleRetourBoutique}
             >
               Retourner à la boutique
             </Button>
           </div>
         ) : (
-          <div className="flex flex-col max-h-[90vh]">
-            <DialogHeader className="sticky top-0 z-10 bg-white rounded-t-3xl">
-              <DialogTitle>Finaliser ma commande</DialogTitle>
-            </DialogHeader>
-            <div className="overflow-y-auto px-6 pb-6">
-              <div className="flex items-center space-x-4 mb-6 bg-gray-50 p-3 rounded-2xl border border-gray-100">
+          <div className="flex max-h-[90vh] flex-col">
+            <div className="shrink-0 bg-gradient-to-br from-teal-700 via-teal-800 to-slate-900 px-6 pb-5 pt-7 text-white">
+              <DialogHeader className="space-y-1 border-0 p-0 text-left">
+                <DialogTitle className="text-xl font-bold tracking-tight text-white">
+                  Finaliser ma commande
+                </DialogTitle>
+                <p className="text-sm text-teal-100/95">
+                  Livraison en Côte d&apos;Ivoire — paiement à la réception
+                </p>
+              </DialogHeader>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto bg-gradient-to-b from-slate-50/80 to-white px-6 pb-6 pt-5">
+              <div className="mb-6 flex items-center space-x-4 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
                 <ProductImage
                   src={product.images?.[0]}
                   alt=""
@@ -137,9 +147,9 @@ export function OrderModal({
                 </div>
               </div>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-xl flex items-start mb-2">
-                  <AlertCircle className="w-5 h-5 text-emerald-600 mr-2 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-emerald-900 font-medium">
+                <div className="mb-2 flex items-start rounded-xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50 to-teal-50/80 p-3 shadow-sm">
+                  <AlertCircle className="mr-2 mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+                  <p className="text-sm font-medium text-emerald-950">
                     Vous ne payez rien maintenant. Payez uniquement à la
                     livraison.
                   </p>

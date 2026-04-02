@@ -253,7 +253,7 @@ export function AdminAuthModal({ open, onOpenChange, onSuccess }) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg sm:max-w-lg p-0 gap-0 overflow-hidden border-0 shadow-2xl">
+      <DialogContent className="max-w-lg gap-0 overflow-hidden rounded-[1.75rem] border-0 p-0 shadow-[0_25px_80px_-12px_rgba(13,148,136,0.35)] ring-1 ring-white/30 sm:max-w-lg">
         <div className="bg-gradient-to-br from-teal-800 via-teal-900 to-slate-900 px-6 pt-8 pb-6 text-white">
           <DialogHeader className="space-y-3 text-left">
             <div className="flex items-center gap-3">
