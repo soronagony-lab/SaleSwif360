@@ -199,6 +199,14 @@ export async function updateOrderStatusDb(insforge, orderId, status) {
   if (error) throw error
 }
 
+export async function deleteOrderDb(insforge, orderId) {
+  const { error } = await insforge.database
+    .from('orders')
+    .delete()
+    .eq('id', orderId)
+  if (error) throw error
+}
+
 export async function upsertShopSettings(insforge, patch) {
   const row = mapSettingsToRow(patch)
   const { error } = await insforge.database

@@ -9,6 +9,11 @@ import {
 } from 'react'
 import { insforgeShop } from '@/lib/insforgeClient'
 import * as shopApi from '@/lib/shopInsforge'
+import {
+  applyOrderExtrasToOrders,
+  mergeOrderExtras,
+  removeOrderExtras,
+} from '@/lib/adminConfigStorage'
 import { initialProducts } from '@/data/initialProducts'
 import { BRAND } from '@/lib/brand'
 
@@ -70,7 +75,9 @@ export function ShopProvider({ children }) {
   const [products, setProducts] = useState(() =>
     loadJson(STORAGE_KEYS.products, initialProducts)
   )
-  const [orders, setOrders] = useState(() => loadJson(STORAGE_KEYS.orders, []))
+  const [orders, setOrders] = useState(() =>
+    applyOrderExtrasToOrders(loadJson(STORAGE_KEYS.orders, []))
+  )
   const [settings, setSettings] = useState(() => ({
     ...defaultSettings,
     ...loadJson(STORAGE_KEYS.settings, {}),
@@ -97,7 +104,7 @@ export function ShopProvider({ children }) {
         skipPersistProducts.current = true
         skipPersistSettings.current = true
         setProducts(p.length > 0 ? p : [])
-        setOrders(o)
+        setOrders(applyOrderExtrasToOrders(o))
         setSettings({ ...defaultSettings, ...s })
         setRemoteError(null)
       } catch (e) {
@@ -105,7 +112,9 @@ export function ShopProvider({ children }) {
         console.error(e)
         setRemoteError(formatShopSyncError(e))
         setProducts(loadJson(STORAGE_KEYS.products, initialProducts))
-        setOrders(loadJson(STORAGE_KEYS.orders, []))
+        setOrders(
+          applyOrderExtrasToOrders(loadJson(STORAGE_KEYS.orders, []))
+        )
         setSettings({
           ...defaultSettings,
           ...loadJson(STORAGE_KEYS.settings, {}),
@@ -214,6 +223,37 @@ export function ShopProvider({ children }) {
       })
   }, [])
 
+  const EXTRA_ORDER_KEYS = ['courierId', 'internalNote', 'deliveryZoneId']
+
+  const patchOrder = useCallback((orderId, patch) => {
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, ...patch } : o))
+    )
+    if (patch.status != null && insforgeShop) {
+      shopApi
+        .updateOrderStatusDb(insforgeShop, orderId, patch.status)
+        .catch((e) => {
+          console.error('updateOrderStatusDb', e)
+        })
+    }
+    const extra = {}
+    for (const k of EXTRA_ORDER_KEYS) {
+      if (patch[k] !== undefined) extra[k] = patch[k]
+    }
+    if (Object.keys(extra).length > 0) {
+      mergeOrderExtras(orderId, extra)
+    }
+  }, [])
+
+  const deleteOrder = useCallback((orderId) => {
+    setOrders((prev) => prev.filter((o) => o.id !== orderId))
+    removeOrderExtras(orderId)
+    if (!insforgeShop) return
+    shopApi.deleteOrderDb(insforgeShop, orderId).catch((e) => {
+      console.error('deleteOrderDb', e)
+    })
+  }, [])
+
   const value = useMemo(
     () => ({
       products,
@@ -224,6 +264,8 @@ export function ShopProvider({ children }) {
       updateSettings,
       submitOrder,
       patchOrderStatus,
+      patchOrder,
+      deleteOrder,
       remoteEnabled,
       remoteLoading,
       remoteError,
@@ -235,6 +277,8 @@ export function ShopProvider({ children }) {
       updateSettings,
       submitOrder,
       patchOrderStatus,
+      patchOrder,
+      deleteOrder,
       remoteEnabled,
       remoteLoading,
       remoteError,

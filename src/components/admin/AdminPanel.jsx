@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { parseAdminPath, pathForAdminPage } from '@/lib/adminPaths'
 import {
   Box,
+  Download,
   Edit2,
+  Eye,
   ExternalLink,
   Image as ImageIcon,
   LayoutDashboard,
@@ -18,6 +20,7 @@ import {
   Trash2,
   TrendingUp,
   Truck,
+  ArrowDownUp,
   LogOut,
   User,
   Users,
@@ -29,6 +32,31 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatPrice, normalizePhoneForWhatsApp } from '@/lib/format'
+import { useAdminConfig } from '@/hooks/useAdminConfig'
+import { OrderDetailDialog } from '@/components/admin/OrderDetailDialog'
+
+function interpolateWaTemplate(body, row, shopName) {
+  const prix =
+    row.lastOrder?.price != null
+      ? formatPrice(row.lastOrder.price)
+      : ''
+  return String(body || '')
+    .replace(/\{\{nom\}\}/g, row.customerName || '')
+    .replace(/\{\{boutique\}\}/g, shopName || '')
+    .replace(/\{\{produit\}\}/g, row.lastProduct || '')
+    .replace(/\{\{prix\}\}/g, prix)
+}
+
+function exportCsv(filename, rows) {
+  const blob = new Blob([`\uFEFF${rows.join('\n')}`], {
+    type: 'text/csv;charset=utf-8',
+  })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
 
 function AdminNavLink({ icon, label, active, onClick, badge }) {
   return (
@@ -99,8 +127,11 @@ export function AdminPanel({ onLeave }) {
     orders,
     settings,
     updateSettings,
-    patchOrderStatus,
+    patchOrder,
+    deleteOrder,
   } = useShop()
+
+  const { config, setConfig } = useAdminConfig()
 
   const handleLogout = async () => {
     await signOut()
@@ -112,7 +143,24 @@ export function AdminPanel({ onLeave }) {
     : 'AD'
   const [editingProduct, setEditingProduct] = useState(null)
   const [newProductImages, setNewProductImages] = useState([])
-  const [team] = useState([{ id: 1, name: 'Admin Principal', role: 'Propriétaire' }])
+  const [orderDialogId, setOrderDialogId] = useState(null)
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [customerCityFilter, setCustomerCityFilter] = useState('')
+  const [customerSort, setCustomerSort] = useState('recent')
+  const [marketingSelected, setMarketingSelected] = useState(() => new Set())
+  const [marketingTemplateId, setMarketingTemplateId] = useState('')
+  const [newZone, setNewZone] = useState({ name: '', fee: '', note: '' })
+  const [newCourier, setNewCourier] = useState({
+    name: '',
+    phone: '',
+    active: true,
+  })
+  const [editingZoneId, setEditingZoneId] = useState(null)
+  const [newCollab, setNewCollab] = useState({
+    name: '',
+    email: '',
+    role: 'Service client',
+  })
 
   const totalRevenue = orders
     .filter((o) => o.status === 'Livrée')
@@ -123,18 +171,171 @@ export function AdminPanel({ onLeave }) {
     0
   )
 
-  const uniqueCustomers = useMemo(() => {
+  const customerAggregates = useMemo(() => {
     const map = new Map()
     for (const o of orders) {
       const key = normalizePhoneForWhatsApp(o.phone)
-      if (!map.has(key)) map.set(key, o)
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          customerName: o.customerName,
+          phone: o.phone,
+          city: o.city || '',
+          orders: [],
+        })
+      }
+      map.get(key).orders.push(o)
     }
-    return Array.from(map.values())
+    return Array.from(map.values()).map((row) => {
+      const sorted = [...row.orders].sort(
+        (a, b) => Number(b.id) - Number(a.id)
+      )
+      const last = sorted[0]
+      const totalLivré = sorted
+        .filter((x) => x.status === 'Livrée')
+        .reduce((s, x) => s + Number(x.price || 0), 0)
+      return {
+        ...row,
+        orderCount: sorted.length,
+        lastOrder: last,
+        lastDate: last?.date ?? '',
+        lastProduct: last?.productName ?? '',
+        totalSpentDelivered: totalLivré,
+      }
+    })
   }, [orders])
 
+  const customerCities = useMemo(() => {
+    const s = new Set()
+    for (const o of orders) {
+      if (o.city?.trim()) s.add(o.city.trim())
+    }
+    return Array.from(s).sort((a, b) => a.localeCompare(b, 'fr'))
+  }, [orders])
+
+  const filteredCustomers = useMemo(() => {
+    let rows = customerAggregates
+    const q = customerSearch.trim().toLowerCase()
+    if (q) {
+      rows = rows.filter(
+        (r) =>
+          r.customerName.toLowerCase().includes(q) ||
+          r.phone.replace(/\s/g, '').includes(q.replace(/\s/g, ''))
+      )
+    }
+    if (customerCityFilter) {
+      rows = rows.filter(
+        (r) =>
+          (r.city || '').toLowerCase() === customerCityFilter.toLowerCase()
+      )
+    }
+    const next = [...rows]
+    if (customerSort === 'name') {
+      next.sort((a, b) =>
+        a.customerName.localeCompare(b.customerName, 'fr')
+      )
+    } else if (customerSort === 'orders') {
+      next.sort((a, b) => b.orderCount - a.orderCount)
+    } else {
+      next.sort(
+        (a, b) =>
+          Number(b.lastOrder?.id || 0) - Number(a.lastOrder?.id || 0)
+      )
+    }
+    return next
+  }, [
+    customerAggregates,
+    customerSearch,
+    customerCityFilter,
+    customerSort,
+  ])
+
   const updateOrderStatus = (id, newStatus) => {
-    patchOrderStatus(id, newStatus)
+    patchOrder(id, { status: newStatus })
   }
+
+  const orderForDialog = useMemo(
+    () => orders.find((o) => o.id === orderDialogId) ?? null,
+    [orders, orderDialogId]
+  )
+
+  const appendCampaignLog = useCallback(
+    (entry) => {
+      setConfig((c) => ({
+        ...c,
+        campaignLog: [
+          { ...entry, at: new Date().toISOString() },
+          ...(c.campaignLog || []),
+        ].slice(0, 100),
+      }))
+    },
+    [setConfig]
+  )
+
+  useEffect(() => {
+    const t = config.whatsappTemplates
+    if (t?.length && !marketingTemplateId) {
+      setMarketingTemplateId(t[0].id)
+    }
+  }, [config.whatsappTemplates, marketingTemplateId])
+
+  const toggleMarketingRow = useCallback((key) => {
+    setMarketingSelected((prev) => {
+      const n = new Set(prev)
+      if (n.has(key)) n.delete(key)
+      else n.add(key)
+      return n
+    })
+  }, [])
+
+  const [newWaTemplate, setNewWaTemplate] = useState({
+    title: '',
+    angle: 'information',
+    body: '',
+  })
+
+  const runBulkWhatsApp = useCallback(() => {
+    const tpl = config.whatsappTemplates?.find(
+      (t) => t.id === marketingTemplateId
+    )
+    if (!tpl) {
+      window.alert('Choisissez un modèle WhatsApp.')
+      return
+    }
+    const targets = customerAggregates.filter((c) =>
+      marketingSelected.has(c.key)
+    )
+    if (targets.length === 0) {
+      window.alert('Cochez au moins un client.')
+      return
+    }
+    appendCampaignLog({
+      mode: 'bulk',
+      templateId: tpl.id,
+      templateTitle: tpl.title,
+      count: targets.length,
+      phones: targets.map((t) => t.phone),
+    })
+    targets.forEach((row, i) => {
+      const body = interpolateWaTemplate(
+        tpl.body,
+        { ...row, lastProduct: row.lastProduct },
+        settings.shopName
+      )
+      const phone = normalizePhoneForWhatsApp(row.phone)
+      const href = `https://wa.me/${phone}?text=${encodeURIComponent(body)}`
+      window.setTimeout(() => {
+        window.open(href, '_blank', 'noopener,noreferrer')
+      }, i * 800)
+    })
+  }, [
+    appendCampaignLog,
+    config.whatsappTemplates,
+    customerAggregates,
+    marketingSelected,
+    marketingTemplateId,
+    settings.shopName,
+  ])
 
   const updateProductStock = (id, delta) => {
     setProducts(
@@ -173,11 +374,6 @@ export function AdminPanel({ onLeave }) {
     const phone = normalizePhoneForWhatsApp(order.phone)
     const message = `Bonjour ${order.customerName},\n\nNous avons bien reçu votre commande sur *${settings.shopName}* pour: *${order.productName}* (${formatPrice(order.price)}).\n\nAdresse: ${order.city}, ${order.address}.\n\nQuand souhaitez-vous être livré ?`
     return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
-  }
-
-  const getRelanceLink = (phoneRaw) => {
-    const phone = normalizePhoneForWhatsApp(phoneRaw)
-    return `https://wa.me/${phone}?text=${encodeURIComponent(settings.relanceMessage)}`
   }
 
   const adminTitle =
@@ -330,7 +526,7 @@ export function AdminPanel({ onLeave }) {
                 />
                 <StatCard
                   title="Clients"
-                  value={uniqueCustomers.length}
+                  value={customerAggregates.length}
                   icon={<Users className="text-purple-500 w-5 h-5" />}
                   color="bg-purple-50"
                 />
@@ -497,15 +693,41 @@ export function AdminPanel({ onLeave }) {
                           </select>
                         </td>
                         <td className="p-4 align-top text-right">
-                          <a
-                            href={getWhatsAppLink(o)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center bg-[#25D366] hover:bg-[#20b856] text-white px-3 py-2 rounded-xl font-bold transition-transform hover:scale-105 shadow-sm text-xs"
-                            title="Contacter sur WhatsApp"
-                          >
-                            <MessageCircle className="w-4 h-4 mr-1" /> WhatsApp
-                          </a>
+                          <div className="flex flex-wrap gap-1.5 justify-end items-center">
+                            <button
+                              type="button"
+                              onClick={() => setOrderDialogId(o.id)}
+                              className="inline-flex items-center justify-center bg-teal-100 hover:bg-teal-200 text-teal-800 px-2.5 py-2 rounded-xl font-bold text-xs border-0 cursor-pointer"
+                              title="Voir le détail"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    'Supprimer cette commande ?'
+                                  )
+                                ) {
+                                  deleteOrder(o.id)
+                                }
+                              }}
+                              className="inline-flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-700 px-2.5 py-2 rounded-xl font-bold text-xs border-0 cursor-pointer"
+                              title="Supprimer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <a
+                              href={getWhatsAppLink(o)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center bg-[#25D366] hover:bg-[#20b856] text-white px-2.5 py-2 rounded-xl font-bold transition-transform hover:scale-105 shadow-sm text-xs"
+                              title="WhatsApp"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                            </a>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -797,33 +1019,111 @@ export function AdminPanel({ onLeave }) {
 
           {adminPage === 'customers' && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-wrap gap-2">
-                <h3 className="font-bold text-gray-800 text-lg">
-                  Répertoire clients
-                </h3>
-                <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-bold">
-                  {uniqueCustomers.length} clients
-                </span>
+              <div className="p-6 border-b border-gray-100 flex flex-col gap-4 bg-gray-50/50">
+                <div className="flex justify-between items-center flex-wrap gap-2">
+                  <h3 className="font-bold text-gray-800 text-lg">
+                    Répertoire clients
+                  </h3>
+                  <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-bold">
+                    {filteredCustomers.length} affiché(s) /{' '}
+                    {customerAggregates.length} total
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2 items-end">
+                  <div className="flex-1 min-w-[160px]">
+                    <Label className="mb-1 block text-xs">Recherche</Label>
+                    <Input
+                      value={customerSearch}
+                      onChange={(e) => setCustomerSearch(e.target.value)}
+                      placeholder="Nom ou téléphone"
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="min-w-[140px]">
+                    <Label className="mb-1 block text-xs">Ville</Label>
+                    <select
+                      value={customerCityFilter}
+                      onChange={(e) => setCustomerCityFilter(e.target.value)}
+                      className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm"
+                    >
+                      <option value="">Toutes</option>
+                      {customerCities.map((city) => (
+                        <option key={city} value={city}>
+                          {city}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="min-w-[160px]">
+                    <Label className="mb-1 block text-xs">Tri</Label>
+                    <select
+                      value={customerSort}
+                      onChange={(e) => setCustomerSort(e.target.value)}
+                      className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-medium"
+                    >
+                      <option value="recent">Plus récent</option>
+                      <option value="name">Nom (A→Z)</option>
+                      <option value="orders">Nb commandes</option>
+                    </select>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 rounded-xl shrink-0"
+                    onClick={() => {
+                      const lines = [
+                        [
+                          'Nom',
+                          'Téléphone',
+                          'Ville',
+                          'Commandes',
+                          'Dernière date',
+                          'Dernier produit',
+                          'CA livré (FCFA)',
+                        ].join(';'),
+                        ...filteredCustomers.map((c) =>
+                          [
+                            c.customerName,
+                            c.phone,
+                            c.city || '',
+                            String(c.orderCount),
+                            c.lastDate,
+                            c.lastProduct,
+                            String(c.totalSpentDelivered),
+                          ].join(';')
+                        ),
+                      ]
+                      exportCsv(
+                        `clients-${new Date().toISOString().slice(0, 10)}.csv`,
+                        lines
+                      )
+                    }}
+                  >
+                    <Download className="w-4 h-4" /> Export CSV
+                  </Button>
+                </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left min-w-[560px]">
+                <table className="w-full text-left min-w-[720px]">
                   <thead>
                     <tr className="bg-white text-gray-400 text-xs uppercase tracking-wider border-b border-gray-200">
                       <th className="p-4 font-bold">Client</th>
                       <th className="p-4 font-bold">Contact</th>
-                      <th className="p-4 font-bold">Localisation (dernière)</th>
+                      <th className="p-4 font-bold">Localisation</th>
+                      <th className="p-4 font-bold text-center">Cmd.</th>
+                      <th className="p-4 font-bold">Dernière commande</th>
                     </tr>
                   </thead>
                   <tbody className="text-sm divide-y divide-gray-100">
-                    {uniqueCustomers.length === 0 && (
+                    {filteredCustomers.length === 0 && (
                       <tr>
-                        <td colSpan={3} className="p-12 text-center text-gray-500">
-                          Aucun client enregistré.
+                        <td colSpan={5} className="p-12 text-center text-gray-500">
+                          Aucun client ne correspond aux filtres.
                         </td>
                       </tr>
                     )}
-                    {uniqueCustomers.map((c, i) => (
-                      <tr key={`${c.phone}-${i}`} className="hover:bg-gray-50">
+                    {filteredCustomers.map((c) => (
+                      <tr key={c.key} className="hover:bg-gray-50">
                         <td className="p-4">
                           <div className="flex items-center">
                             <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold mr-3">
@@ -834,9 +1134,20 @@ export function AdminPanel({ onLeave }) {
                             </span>
                           </div>
                         </td>
-                        <td className="p-4 font-medium text-gray-700">{c.phone}</td>
+                        <td className="p-4 font-medium text-gray-700">
+                          {c.phone}
+                        </td>
                         <td className="p-4 text-gray-600">
-                          {c.city}, {c.address}
+                          {c.city || '—'}
+                        </td>
+                        <td className="p-4 text-center font-bold text-teal-700">
+                          {c.orderCount}
+                        </td>
+                        <td className="p-4 text-gray-700">
+                          <div className="text-xs text-gray-500">{c.lastDate}</div>
+                          <div className="font-medium text-gray-900 truncate max-w-[220px]">
+                            {c.lastProduct}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -853,54 +1164,273 @@ export function AdminPanel({ onLeave }) {
                   <Megaphone className="w-6 h-6 text-teal-600" />
                   Campagnes & relances WhatsApp
                 </h3>
-                <div className="mb-6">
-                  <Label className="mb-2 block">Message type de relance promo</Label>
-                  <textarea
-                    value={settings.relanceMessage}
-                    onChange={(e) =>
-                      updateSettings({ relanceMessage: e.target.value })
-                    }
-                    rows={3}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus-visible:border-teal-500 focus-visible:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/30"
-                  />
+                <p className="text-sm text-gray-500 mb-6">
+                  Modèles avec variables :{' '}
+                  <code className="text-xs bg-gray-100 px-1 rounded">
+                    {'{{nom}} {{boutique}} {{produit}} {{prix}}'}
+                  </code>
+                  . Les envois groupés ouvrent un onglet WhatsApp par client
+                  (délai 0,8 s) — autorisez les pop-ups si besoin.
+                </p>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                  <div>
+                    <Label className="mb-2 block">Message par défaut (fallback)</Label>
+                    <textarea
+                      value={settings.relanceMessage}
+                      onChange={(e) =>
+                        updateSettings({ relanceMessage: e.target.value })
+                      }
+                      rows={3}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus-visible:border-teal-500 focus-visible:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/30"
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="mb-2 block">Nouveau modèle</Label>
+                    <Input
+                      value={newWaTemplate.title}
+                      onChange={(e) =>
+                        setNewWaTemplate((s) => ({
+                          ...s,
+                          title: e.target.value,
+                        }))
+                      }
+                      placeholder="Titre interne"
+                      className="mb-2"
+                    />
+                    <select
+                      value={newWaTemplate.angle}
+                      onChange={(e) =>
+                        setNewWaTemplate((s) => ({
+                          ...s,
+                          angle: e.target.value,
+                        }))
+                      }
+                      className="w-full h-11 rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm mb-2"
+                    >
+                      <option value="information">Information</option>
+                      <option value="marketing">Marketing</option>
+                    </select>
+                    <textarea
+                      value={newWaTemplate.body}
+                      onChange={(e) =>
+                        setNewWaTemplate((s) => ({
+                          ...s,
+                          body: e.target.value,
+                        }))
+                      }
+                      rows={4}
+                      placeholder="Texte du message WhatsApp…"
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm"
+                    />
+                    <Button
+                      type="button"
+                      className="rounded-xl w-full"
+                      onClick={() => {
+                        if (
+                          !newWaTemplate.title.trim() ||
+                          !newWaTemplate.body.trim()
+                        )
+                          return
+                        setConfig((c) => ({
+                          ...c,
+                          whatsappTemplates: [
+                            ...(c.whatsappTemplates || []),
+                            {
+                              id: `wt_${Date.now()}`,
+                              title: newWaTemplate.title.trim(),
+                              angle: newWaTemplate.angle,
+                              body: newWaTemplate.body.trim(),
+                            },
+                          ],
+                        }))
+                        setNewWaTemplate({
+                          title: '',
+                          angle: 'information',
+                          body: '',
+                        })
+                      }}
+                    >
+                      <Plus className="w-4 h-4" /> Ajouter le modèle
+                    </Button>
+                  </div>
+                </div>
+                <div className="mb-4 space-y-2">
+                  <Label className="text-xs font-bold text-gray-500 uppercase">
+                    Modèles enregistrés
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    {(config.whatsappTemplates || []).map((t) => (
+                      <div
+                        key={t.id}
+                        className="flex items-center gap-1 bg-gray-50 border border-gray-100 rounded-xl pl-3 pr-1 py-1 text-sm"
+                      >
+                        <span className="font-medium text-gray-800 truncate max-w-[180px]">
+                          {t.title}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                            t.angle === 'marketing'
+                              ? 'bg-orange-100 text-orange-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}
+                        >
+                          {t.angle === 'marketing' ? 'Mkt' : 'Info'}
+                        </span>
+                        <button
+                          type="button"
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg border-0 cursor-pointer"
+                          title="Supprimer"
+                          onClick={() =>
+                            setConfig((c) => ({
+                              ...c,
+                              whatsappTemplates: (
+                                c.whatsappTemplates || []
+                              ).filter((x) => x.id !== t.id),
+                            }))
+                          }
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-3 items-end mb-4 p-4 bg-teal-50/50 rounded-2xl border border-teal-100">
+                  <div className="flex-1 min-w-[200px]">
+                    <Label className="mb-1 block text-xs">Modèle pour la liste</Label>
+                    <select
+                      value={marketingTemplateId}
+                      onChange={(e) => setMarketingTemplateId(e.target.value)}
+                      className="w-full h-11 rounded-xl border border-gray-200 bg-white px-3 text-sm font-medium"
+                    >
+                      {(config.whatsappTemplates || []).map((t) => (
+                        <option key={t.id} value={t.id}>
+                          [{t.angle === 'marketing' ? 'Mkt' : 'Info'}] {t.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="accent"
+                    className="rounded-xl"
+                    onClick={runBulkWhatsApp}
+                  >
+                    Envoi groupé (sélection)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-xl"
+                    onClick={() => {
+                      if (marketingSelected.size === customerAggregates.length) {
+                        setMarketingSelected(new Set())
+                      } else {
+                        setMarketingSelected(
+                          new Set(customerAggregates.map((c) => c.key))
+                        )
+                      }
+                    }}
+                  >
+                    Tout sélectionner / désélectionner
+                  </Button>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left min-w-[480px]">
+                  <table className="w-full text-left min-w-[520px]">
                     <thead>
                       <tr className="bg-white text-gray-400 text-xs uppercase tracking-wider border-b border-gray-200">
+                        <th className="p-3 w-10" aria-label="Sélection" />
                         <th className="p-4 font-bold">Client</th>
                         <th className="p-4 font-bold">Contact</th>
                         <th className="p-4 font-bold text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody className="text-sm divide-y divide-gray-100">
-                      {uniqueCustomers.length === 0 && (
+                      {customerAggregates.length === 0 && (
                         <tr>
-                          <td colSpan={3} className="p-8 text-center text-gray-500">
+                          <td colSpan={4} className="p-8 text-center text-gray-500">
                             Aucun client à relancer.
                           </td>
                         </tr>
                       )}
-                      {uniqueCustomers.map((c, i) => (
-                        <tr key={`m-${c.phone}-${i}`} className="hover:bg-gray-50">
-                          <td className="p-4 font-bold text-gray-900">
-                            {c.customerName}
-                          </td>
-                          <td className="p-4 text-gray-600">{c.phone}</td>
-                          <td className="p-4 text-right">
-                            <a
-                              href={getRelanceLink(c.phone)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center bg-orange-100 hover:bg-orange-200 text-orange-700 px-4 py-2 rounded-xl font-bold transition-colors text-xs"
-                            >
-                              <MessageCircle className="w-4 h-4 mr-1" /> Relancer
-                            </a>
-                          </td>
-                        </tr>
-                      ))}
+                      {customerAggregates.map((c) => {
+                        const tpl = config.whatsappTemplates?.find(
+                          (t) => t.id === marketingTemplateId
+                        )
+                        const body = tpl
+                          ? interpolateWaTemplate(
+                              tpl.body,
+                              {
+                                ...c,
+                                lastProduct: c.lastProduct,
+                              },
+                              settings.shopName
+                            )
+                          : settings.relanceMessage
+                        const href = `https://wa.me/${normalizePhoneForWhatsApp(c.phone)}?text=${encodeURIComponent(body)}`
+                        return (
+                          <tr key={`m-${c.key}`} className="hover:bg-gray-50">
+                            <td className="p-3 align-middle">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-gray-300"
+                                checked={marketingSelected.has(c.key)}
+                                onChange={() => toggleMarketingRow(c.key)}
+                              />
+                            </td>
+                            <td className="p-4 font-bold text-gray-900">
+                              {c.customerName}
+                            </td>
+                            <td className="p-4 text-gray-600">{c.phone}</td>
+                            <td className="p-4 text-right">
+                              <a
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() =>
+                                  appendCampaignLog({
+                                    mode: 'single',
+                                    templateId: tpl?.id,
+                                    phone: c.phone,
+                                  })
+                                }
+                                className="inline-flex items-center bg-orange-100 hover:bg-orange-200 text-orange-700 px-4 py-2 rounded-xl font-bold transition-colors text-xs"
+                              >
+                                <MessageCircle className="w-4 h-4 mr-1" />{' '}
+                                Relancer
+                              </a>
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
+                </div>
+                <div className="mt-8 border-t border-gray-100 pt-6">
+                  <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    <ArrowDownUp className="w-4 h-4 text-gray-500" />
+                    Suivi des envois (local)
+                  </h4>
+                  <ul className="space-y-2 max-h-48 overflow-y-auto text-xs text-gray-600">
+                    {(config.campaignLog || []).length === 0 && (
+                      <li className="text-gray-400">Aucun envoi enregistré.</li>
+                    )}
+                    {(config.campaignLog || []).slice(0, 30).map((log, i) => (
+                      <li
+                        key={`${log.at}-${i}`}
+                        className="bg-gray-50 rounded-lg px-3 py-2 border border-gray-100"
+                      >
+                        <span className="font-mono text-gray-500">
+                          {log.at?.slice(0, 19)?.replace('T', ' ')}
+                        </span>{' '}
+                        — {log.mode === 'bulk' ? 'Groupe' : 'Unitaire'}
+                        {log.templateTitle
+                          ? ` — ${log.templateTitle}`
+                          : ''}{' '}
+                        {log.count != null ? `(${log.count})` : ''}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8 md:max-w-3xl">
@@ -954,54 +1484,351 @@ export function AdminPanel({ onLeave }) {
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                  <h3 className="font-bold text-gray-900 text-xl mb-6 flex items-center gap-2">
-                    <Truck className="w-6 h-6 text-teal-600" />
-                    Zones de livraison
-                  </h3>
-                  <div className="space-y-3 mb-6">
-                    <div className="flex justify-between items-center gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                      <span className="font-bold text-gray-800 text-sm">
-                        Abidjan Nord (Cocody, Bingerville…)
-                      </span>
-                      <span className="text-teal-600 font-bold whitespace-nowrap">
-                        2 000 FCFA
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                      <span className="font-bold text-gray-800 text-sm">
-                        Abidjan Sud (Marcory, Koumassi…)
-                      </span>
-                      <span className="text-teal-600 font-bold whitespace-nowrap">
-                        2 500 FCFA
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                      <span className="font-bold text-gray-800 text-sm">
-                        Intérieur du pays
-                      </span>
-                      <span className="text-teal-600 font-bold whitespace-nowrap">
-                        5 000 FCFA
-                      </span>
-                    </div>
+                  <div className="flex justify-between items-start gap-2 mb-6 flex-wrap">
+                    <h3 className="font-bold text-gray-900 text-xl flex items-center gap-2">
+                      <Truck className="w-6 h-6 text-teal-600" />
+                      Zones de livraison
+                    </h3>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl shrink-0"
+                      onClick={() => {
+                        const lines = [
+                          ['Nom', 'Frais (FCFA)', 'Note'].join(';'),
+                          ...(config.zones || []).map((z) =>
+                            [
+                              z.name,
+                              String(z.fee ?? ''),
+                              (z.note || '').replace(/;/g, ','),
+                            ].join(';')
+                          ),
+                        ]
+                        exportCsv(
+                          `zones-livraison-${new Date().toISOString().slice(0, 10)}.csv`,
+                          lines
+                        )
+                      }}
+                    >
+                      <Download className="w-4 h-4" /> Export
+                    </Button>
                   </div>
-                  <button
-                    type="button"
-                    className="w-full border-2 border-dashed border-gray-300 text-gray-500 font-bold py-3 rounded-xl hover:bg-gray-50 hover:border-teal-300 hover:text-teal-600 transition-colors flex justify-center items-center gap-2 bg-transparent cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" /> Ajouter une zone
-                  </button>
+                  <div className="space-y-3 mb-6">
+                    {(config.zones || []).map((z) => (
+                      <div
+                        key={z.id}
+                        className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100"
+                      >
+                        {editingZoneId === z.id ? (
+                          <div className="flex-1 space-y-2 w-full">
+                            <Input
+                              defaultValue={z.name}
+                              id={`zn-${z.id}`}
+                              className="h-9"
+                            />
+                            <Input
+                              defaultValue={String(z.fee)}
+                              id={`zf-${z.id}`}
+                              type="number"
+                              className="h-9"
+                            />
+                            <Input
+                              defaultValue={z.note || ''}
+                              id={`znote-${z.id}`}
+                              placeholder="Note"
+                              className="h-9"
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="rounded-lg"
+                                onClick={() => {
+                                  const name = document.getElementById(
+                                    `zn-${z.id}`
+                                  )?.value
+                                  const fee = parseInt(
+                                    String(
+                                      document.getElementById(`zf-${z.id}`)
+                                        ?.value || '0'
+                                    ),
+                                    10
+                                  )
+                                  const note =
+                                    document.getElementById(
+                                      `znote-${z.id}`
+                                    )?.value || ''
+                                  setConfig((c) => ({
+                                    ...c,
+                                    zones: (c.zones || []).map((x) =>
+                                      x.id === z.id
+                                        ? {
+                                            ...x,
+                                            name: name || x.name,
+                                            fee: Number.isFinite(fee)
+                                              ? fee
+                                              : x.fee,
+                                            note,
+                                          }
+                                        : x
+                                    ),
+                                  }))
+                                  setEditingZoneId(null)
+                                }}
+                              >
+                                OK
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                className="rounded-lg"
+                                onClick={() => setEditingZoneId(null)}
+                              >
+                                Annuler
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div>
+                              <span className="font-bold text-gray-800 text-sm block">
+                                {z.name}
+                              </span>
+                              {z.note ? (
+                                <span className="text-xs text-gray-500">
+                                  {z.note}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-teal-600 font-bold whitespace-nowrap">
+                                {formatPrice(z.fee)}
+                              </span>
+                              <button
+                                type="button"
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg border-0 cursor-pointer"
+                                title="Modifier"
+                                onClick={() => setEditingZoneId(z.id)}
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg border-0 cursor-pointer"
+                                title="Supprimer"
+                                onClick={() => {
+                                  if (
+                                    window.confirm(
+                                      'Supprimer cette zone ?'
+                                    )
+                                  ) {
+                                    setConfig((c) => ({
+                                      ...c,
+                                      zones: (c.zones || []).filter(
+                                        (x) => x.id !== z.id
+                                      ),
+                                    }))
+                                  }
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border border-dashed border-gray-200 rounded-xl p-4 space-y-3">
+                    <p className="text-sm font-bold text-gray-700">
+                      Nouvelle zone
+                    </p>
+                    <Input
+                      value={newZone.name}
+                      onChange={(e) =>
+                        setNewZone((s) => ({ ...s, name: e.target.value }))
+                      }
+                      placeholder="Nom de la zone"
+                    />
+                    <Input
+                      type="number"
+                      value={newZone.fee}
+                      onChange={(e) =>
+                        setNewZone((s) => ({ ...s, fee: e.target.value }))
+                      }
+                      placeholder="Frais (FCFA)"
+                    />
+                    <Input
+                      value={newZone.note}
+                      onChange={(e) =>
+                        setNewZone((s) => ({ ...s, note: e.target.value }))
+                      }
+                      placeholder="Note (optionnel)"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full rounded-xl"
+                      onClick={() => {
+                        if (!newZone.name.trim()) return
+                        const fee = parseInt(String(newZone.fee || '0'), 10)
+                        setConfig((c) => ({
+                          ...c,
+                          zones: [
+                            ...(c.zones || []),
+                            {
+                              id: `z_${Date.now()}`,
+                              name: newZone.name.trim(),
+                              fee: Number.isFinite(fee) ? fee : 0,
+                              note: newZone.note.trim(),
+                            },
+                          ],
+                        }))
+                        setNewZone({ name: '', fee: '', note: '' })
+                      }}
+                    >
+                      <Plus className="w-4 h-4" /> Ajouter la zone
+                    </Button>
+                  </div>
                 </div>
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                  <h3 className="font-bold text-gray-900 text-xl mb-6">
-                    Assignation des coursiers
+                  <h3 className="font-bold text-gray-900 text-xl mb-2">
+                    Livreurs
                   </h3>
                   <p className="text-sm text-gray-500 mb-4">
-                    Fonctionnalité à venir : connectez votre compte livreur ou
-                    affectez vos commandes « En cours » à votre équipe.
+                    Créez vos livreurs pour les assigner aux commandes (détail
+                    commande).
                   </p>
-                  <div className="bg-orange-50 text-orange-800 p-4 rounded-xl text-sm font-medium border border-orange-100">
+                  <div className="bg-orange-50 text-orange-800 p-4 rounded-xl text-sm font-medium border border-orange-100 mb-4">
                     {orders.filter((o) => o.status === 'Nouvelle').length}{' '}
-                    commandes en attente d&apos;expédition.
+                    commandes « Nouvelle » en attente.
+                  </div>
+                  <div className="space-y-3 mb-6">
+                    {(config.couriers || []).map((c) => (
+                      <div
+                        key={c.id}
+                        className="flex flex-wrap justify-between items-center gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100"
+                      >
+                        <div>
+                          <p className="font-bold text-gray-800 text-sm">
+                            {c.name}
+                          </p>
+                          <p className="text-xs text-gray-500">{c.phone || '—'}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setConfig((cfg) => ({
+                                ...cfg,
+                                couriers: (cfg.couriers || []).map((x) =>
+                                  x.id === c.id
+                                    ? {
+                                        ...x,
+                                        active: !(x.active !== false),
+                                      }
+                                    : x
+                                ),
+                              }))
+                            }
+                            className={`text-xs font-bold px-2 py-1 rounded-lg border-0 cursor-pointer ${
+                              c.active === false
+                                ? 'bg-gray-200 text-gray-600'
+                                : 'bg-green-100 text-green-800'
+                            }`}
+                          >
+                            {c.active === false ? 'Inactif' : 'Actif'}
+                          </button>
+                          <button
+                            type="button"
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg border-0 cursor-pointer"
+                            title="Supprimer"
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  'Supprimer ce livreur ?'
+                                )
+                              ) {
+                                setConfig((cfg) => ({
+                                  ...cfg,
+                                  couriers: (cfg.couriers || []).filter(
+                                    (x) => x.id !== c.id
+                                  ),
+                                }))
+                              }
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border border-dashed border-gray-200 rounded-xl p-4 space-y-3">
+                    <p className="text-sm font-bold text-gray-700">
+                      Nouveau livreur
+                    </p>
+                    <Input
+                      value={newCourier.name}
+                      onChange={(e) =>
+                        setNewCourier((s) => ({
+                          ...s,
+                          name: e.target.value,
+                        }))
+                      }
+                      placeholder="Nom"
+                    />
+                    <Input
+                      value={newCourier.phone}
+                      onChange={(e) =>
+                        setNewCourier((s) => ({
+                          ...s,
+                          phone: e.target.value,
+                        }))
+                      }
+                      placeholder="Téléphone"
+                    />
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={newCourier.active}
+                        onChange={(e) =>
+                          setNewCourier((s) => ({
+                            ...s,
+                            active: e.target.checked,
+                          }))
+                        }
+                      />
+                      Actif
+                    </label>
+                    <Button
+                      type="button"
+                      className="w-full rounded-xl"
+                      onClick={() => {
+                        if (!newCourier.name.trim()) return
+                        setConfig((c) => ({
+                          ...c,
+                          couriers: [
+                            ...(c.couriers || []),
+                            {
+                              id: `cr_${Date.now()}`,
+                              name: newCourier.name.trim(),
+                              phone: newCourier.phone.trim(),
+                              active: newCourier.active,
+                            },
+                          ],
+                        }))
+                        setNewCourier({
+                          name: '',
+                          phone: '',
+                          active: true,
+                        })
+                      }}
+                    >
+                      <Plus className="w-4 h-4" /> Ajouter le livreur
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -1052,26 +1879,120 @@ export function AdminPanel({ onLeave }) {
                 </div>
                 <div className="space-y-6">
                   <h4 className="font-bold text-gray-800 border-b border-gray-100 pb-2">
-                    Équipe de gestion
+                    Équipe & collaborateurs
                   </h4>
+                  <p className="text-xs text-gray-500">
+                    Gestion locale (rôles pour référence interne). Les comptes
+                    de connexion restent ceux de votre fournisseur d’auth.
+                  </p>
                   <div className="space-y-3">
-                    {team.map((member) => (
+                    {(config.collaborators || []).length === 0 && (
+                      <p className="text-sm text-gray-400 italic">
+                        Aucun collaborateur enregistré.
+                      </p>
+                    )}
+                    {(config.collaborators || []).map((member) => (
                       <div
                         key={member.id}
-                        className="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100"
+                        className="flex flex-wrap justify-between items-center gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100"
                       >
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 bg-teal-100 text-teal-700 rounded-full flex items-center justify-center font-bold mr-3">
+                        <div className="flex items-center min-w-0">
+                          <div className="w-8 h-8 bg-teal-100 text-teal-700 rounded-full flex items-center justify-center font-bold mr-3 shrink-0">
                             <User className="w-4 h-4" />
                           </div>
-                          <div>
-                            <p className="font-bold text-gray-800 text-sm">
+                          <div className="min-w-0">
+                            <p className="font-bold text-gray-800 text-sm truncate">
                               {member.name}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {member.email || '—'}
                             </p>
                             <p className="text-xs text-teal-600 font-medium">
                               {member.role}
                             </p>
                           </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setConfig((c) => ({
+                                ...c,
+                                collaborators: (c.collaborators || []).map(
+                                  (x) =>
+                                    x.id === member.id
+                                      ? {
+                                          ...x,
+                                          active: !(x.active !== false),
+                                        }
+                                      : x
+                                ),
+                              }))
+                            }
+                            className={`text-xs font-bold px-2 py-1 rounded-lg border-0 cursor-pointer ${
+                              member.active === false
+                                ? 'bg-gray-200 text-gray-600'
+                                : 'bg-green-100 text-green-800'
+                            }`}
+                          >
+                            {member.active === false ? 'Désactivé' : 'Actif'}
+                          </button>
+                          <button
+                            type="button"
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg border-0 cursor-pointer"
+                            title="Modifier"
+                            onClick={() => {
+                              const name = window.prompt('Nom', member.name)
+                              if (name == null) return
+                              const email = window.prompt(
+                                'E-mail (optionnel)',
+                                member.email || ''
+                              )
+                              if (email == null) return
+                              const role = window.prompt(
+                                'Rôle (Manager, Service client, Livreur, Admin)',
+                                member.role || ''
+                              )
+                              if (role == null) return
+                              setConfig((c) => ({
+                                ...c,
+                                collaborators: (c.collaborators || []).map(
+                                  (x) =>
+                                    x.id === member.id
+                                      ? {
+                                          ...x,
+                                          name: name.trim() || x.name,
+                                          email: email.trim(),
+                                          role: role.trim() || x.role,
+                                        }
+                                      : x
+                                ),
+                              }))
+                            }}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg border-0 cursor-pointer"
+                            title="Supprimer"
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  'Retirer ce collaborateur de la liste ?'
+                                )
+                              ) {
+                                setConfig((c) => ({
+                                  ...c,
+                                  collaborators: (
+                                    c.collaborators || []
+                                  ).filter((x) => x.id !== member.id),
+                                }))
+                              }
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -1080,24 +2001,77 @@ export function AdminPanel({ onLeave }) {
                     <p className="text-sm font-bold text-gray-700 mb-3">
                       Ajouter un collaborateur
                     </p>
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="flex flex-col gap-2">
                       <Input
                         type="text"
                         placeholder="Nom complet"
-                        className="flex-1 min-w-[140px]"
+                        className="w-full"
+                        value={newCollab.name}
+                        onChange={(e) =>
+                          setNewCollab((s) => ({
+                            ...s,
+                            name: e.target.value,
+                          }))
+                        }
                       />
-                      <select className="h-11 flex-1 min-w-[140px] rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm">
-                        <option>Manager</option>
-                        <option>Service client</option>
-                        <option>Livreur</option>
+                      <Input
+                        type="email"
+                        placeholder="E-mail (optionnel)"
+                        className="w-full"
+                        value={newCollab.email}
+                        onChange={(e) =>
+                          setNewCollab((s) => ({
+                            ...s,
+                            email: e.target.value,
+                          }))
+                        }
+                      />
+                      <select
+                        className="h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm"
+                        value={newCollab.role}
+                        onChange={(e) =>
+                          setNewCollab((s) => ({
+                            ...s,
+                            role: e.target.value,
+                          }))
+                        }
+                      >
+                        <option value="Manager">Manager</option>
+                        <option value="Service client">Service client</option>
+                        <option value="Livreur">Livreur</option>
+                        <option value="Admin">Admin</option>
                       </select>
                     </div>
                     <Button
                       type="button"
                       variant="secondary"
                       className="mt-3 w-full rounded-lg bg-gray-900 text-white hover:bg-gray-800"
+                      onClick={() => {
+                        if (!newCollab.name.trim()) {
+                          window.alert('Indiquez un nom.')
+                          return
+                        }
+                        setConfig((c) => ({
+                          ...c,
+                          collaborators: [
+                            ...(c.collaborators || []),
+                            {
+                              id: `col_${Date.now()}`,
+                              name: newCollab.name.trim(),
+                              email: newCollab.email.trim(),
+                              role: newCollab.role,
+                              active: true,
+                            },
+                          ],
+                        }))
+                        setNewCollab({
+                          name: '',
+                          email: '',
+                          role: 'Service client',
+                        })
+                      }}
                     >
-                      Inviter
+                      Enregistrer le collaborateur
                     </Button>
                   </div>
                 </div>
@@ -1105,6 +2079,19 @@ export function AdminPanel({ onLeave }) {
             </div>
           )}
         </div>
+        <OrderDetailDialog
+          open={orderDialogId != null}
+          onOpenChange={(open) => {
+            if (!open) setOrderDialogId(null)
+          }}
+          order={orderForDialog}
+          shopName={settings.shopName}
+          zones={config.zones}
+          couriers={config.couriers}
+          relanceTemplates={config.whatsappTemplates}
+          onPatchOrder={patchOrder}
+          onDeleteOrder={deleteOrder}
+        />
       </main>
     </div>
   )
