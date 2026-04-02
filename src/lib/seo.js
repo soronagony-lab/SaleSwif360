@@ -1,5 +1,9 @@
 import { BRAND, DEFAULT_SITE_URL } from '@/lib/brand'
 
+/** Image Open Graph par défaut (aloès / bien-être, format 1,91:1) — si pas d’image produit */
+export const FOREVER_LIVING_OG_FALLBACK =
+  'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=1200&h=630&fit=crop&q=85&auto=format'
+
 /** URL canonique de prod — surcharge avec VITE_SITE_URL si défini */
 export function getSiteOrigin() {
   if (typeof window !== 'undefined') return window.location.origin

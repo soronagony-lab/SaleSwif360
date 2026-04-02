@@ -36,6 +36,7 @@ import {
   trackPurchase,
   trackViewContent,
 } from '@/lib/facebookPixel'
+import { productPath } from '@/lib/productSlug'
 import {
   PATHS,
   backPathForProductNav,
@@ -98,6 +99,15 @@ export function StoreFront() {
     window.scrollTo(0, 0)
   }, [location.pathname])
 
+  /** Anciennes URLs /produit/1 → URL canonique avec slug (3 premiers mots + id) */
+  useEffect(() => {
+    if (storePage !== 'product' || !currentProduct) return
+    const canonical = productPath(currentProduct)
+    if (location.pathname !== canonical) {
+      navigate(canonical, { replace: true })
+    }
+  }, [storePage, currentProduct, location.pathname, navigate])
+
   useEffect(() => {
     if (storePage !== 'product' || !currentProduct) return
     trackViewContent(currentProduct)
@@ -121,7 +131,7 @@ export function StoreFront() {
 
   const goToProduct = (product, fromPage) => {
     const from = backPathForProductNav(fromPage, blogSlug)
-    navigate(PATHS.product(product.id), { state: { from } })
+    navigate(productPath(product), { state: { from } })
     setIsMenuOpen(false)
     window.scrollTo(0, 0)
   }

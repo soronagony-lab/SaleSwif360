@@ -1,7 +1,9 @@
 import { useEffect } from 'react'
 import { BRAND } from '@/lib/brand'
 import { getArticleBySlug } from '@/data/blogArticles'
+import { productPath } from '@/lib/productSlug'
 import {
+  FOREVER_LIVING_OG_FALLBACK,
   SITE_DEFAULTS,
   getSiteOrigin,
   setLinkCanonical,
@@ -9,8 +11,7 @@ import {
   setMetaByProperty,
 } from '@/lib/seo'
 
-const DEFAULT_OG_IMAGE =
-  'https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=1200&q=80&auto=format'
+const DEFAULT_OG_IMAGE = FOREVER_LIVING_OG_FALLBACK
 
 function absImageUrl(base, src) {
   if (!src || typeof src !== 'string') return null
@@ -18,6 +19,8 @@ function absImageUrl(base, src) {
   if (src.startsWith('/')) return `${base}${src}`
   return `${base}/${src}`
 }
+
+const JSON_LD_PRODUCT_ID = 'seo-jsonld-product'
 
 /**
  * Met à jour title + meta pour le SEO (SPA) — ciblage Côte d’Ivoire.
@@ -36,6 +39,11 @@ export function SeoHead({ storePage, currentProduct, shopName, blogSlug }) {
     let path = '/'
     let ogImage = DEFAULT_OG_IMAGE
     let keywords = SITE_DEFAULTS.keywords
+    let ogType = 'website'
+
+    ;['product:price:amount', 'product:price:currency'].forEach((p) => {
+      document.querySelector(`meta[property="${p}"]`)?.remove()
+    })
 
     if (blogArticle) {
       title = `${blogArticle.title} — Blog ${brand}`
@@ -45,7 +53,7 @@ export function SeoHead({ storePage, currentProduct, shopName, blogSlug }) {
           : blogArticle.excerpt
       path = `/blog/${blogArticle.slug}`
       keywords = `${blogArticle.keywords}, blog ${brand}, Forever Living Côte d'Ivoire`
-      ogImage = blogArticle.heroImage || DEFAULT_OG_IMAGE
+      ogImage = blogArticle.heroImage || FOREVER_LIVING_OG_FALLBACK
     } else if (storePage === 'blog') {
       title = `Blog bien-être & business — ${brand}`
       description = `Articles produits Forever Living, conseils santé naturelle et opportunité de distribution en Côte d'Ivoire. ${defaultDesc.slice(0, 120)}…`
@@ -72,9 +80,11 @@ export function SeoHead({ storePage, currentProduct, shopName, blogSlug }) {
       description =
         String(snippet).slice(0, 155) +
         (String(snippet).length > 155 ? '…' : '')
-      path = `/produit/${encodeURIComponent(String(currentProduct.id))}`
+      path = productPath(currentProduct)
       const firstImg = currentProduct.images?.[0]
-      ogImage = absImageUrl(base, firstImg) || DEFAULT_OG_IMAGE
+      ogImage = absImageUrl(base, firstImg) || FOREVER_LIVING_OG_FALLBACK
+      ogType = 'product'
+      keywords = `${currentProduct.name}, Forever Living Products, ${SITE_DEFAULTS.keywords}, achat Côte d'Ivoire`
     }
 
     document.title = title
@@ -85,7 +95,7 @@ export function SeoHead({ storePage, currentProduct, shopName, blogSlug }) {
     const gsv = import.meta.env.VITE_GOOGLE_SITE_VERIFICATION
     if (gsv) setMetaByName('google-site-verification', gsv)
 
-    setMetaByProperty('og:type', 'website')
+    setMetaByProperty('og:type', ogType)
     setMetaByProperty('og:locale', SITE_DEFAULTS.locale)
     setMetaByProperty('og:site_name', brand)
     setMetaByProperty('og:title', title)
@@ -93,6 +103,17 @@ export function SeoHead({ storePage, currentProduct, shopName, blogSlug }) {
     setMetaByProperty('og:url', `${base}${path}`)
     setMetaByProperty('og:image', ogImage)
     setMetaByProperty('og:image:alt', title)
+    setMetaByProperty('og:image:width', '1200')
+    setMetaByProperty('og:image:height', '630')
+    if (ogImage.startsWith('https://')) {
+      setMetaByProperty('og:image:secure_url', ogImage)
+    }
+
+    if (storePage === 'product' && currentProduct) {
+      const price = Number(currentProduct.price) || 0
+      setMetaByProperty('product:price:amount', String(price))
+      setMetaByProperty('product:price:currency', 'XOF')
+    }
 
     setMetaByName('twitter:card', 'summary_large_image')
     setMetaByName('twitter:title', title)
@@ -101,6 +122,60 @@ export function SeoHead({ storePage, currentProduct, shopName, blogSlug }) {
 
     setLinkCanonical(`${base}${path}`)
   }, [storePage, currentProduct, shopName, blogSlug])
+
+  useEffect(() => {
+    const existing = document.getElementById(JSON_LD_PRODUCT_ID)
+    if (existing) existing.remove()
+
+    if (storePage !== 'product' || !currentProduct) return
+
+    const base = getSiteOrigin()
+    const script = document.createElement('script')
+    script.id = JSON_LD_PRODUCT_ID
+    script.type = 'application/ld+json'
+    const firstImg = currentProduct.images?.[0]
+    const imageUrl =
+      absImageUrl(base, firstImg) || FOREVER_LIVING_OG_FALLBACK
+    const desc =
+      currentProduct.detailedDescription ||
+      currentProduct.description ||
+      SITE_DEFAULTS.description
+    const inStock = (currentProduct.stock || 0) > 0
+
+    script.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: currentProduct.name,
+      description: String(desc).slice(0, 5000),
+      image: imageUrl,
+      sku: String(currentProduct.id),
+      brand: {
+        '@type': 'Brand',
+        name: BRAND.name,
+      },
+      offers: {
+        '@type': 'Offer',
+        url: `${base}${productPath(currentProduct)}`,
+        priceCurrency: 'XOF',
+        price: String(Number(currentProduct.price) || 0),
+        availability: inStock
+          ? 'https://schema.org/InStock'
+          : 'https://schema.org/OutOfStock',
+        priceValidUntil: new Date(
+          Date.now() + 365 * 24 * 60 * 60 * 1000
+        ).toISOString().slice(0, 10),
+        seller: {
+          '@type': 'Organization',
+          name: shopName || BRAND.name,
+        },
+      },
+    })
+
+    document.head.appendChild(script)
+    return () => {
+      document.getElementById(JSON_LD_PRODUCT_ID)?.remove()
+    }
+  }, [storePage, currentProduct, shopName])
 
   return null
 }

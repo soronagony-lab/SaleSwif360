@@ -52,4 +52,4 @@ export const BRAND = {
   businessPhoneDisplay: '+225 05 06 84 49 01',
 }
 
-export const DEFAULT_SITE_URL = 'https://succes-solution-flp.vercel.app'
+export const DEFAULT_SITE_URL = 'https://sale-swif360.vercel.app'

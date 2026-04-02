@@ -1,4 +1,5 @@
 import { matchPath } from 'react-router-dom'
+import { findProductByProduitPath } from '@/lib/productSlug'
 
 /** Chemins vitrine — alignés sur SeoHead / partage social */
 export const PATHS = {
@@ -8,7 +9,6 @@ export const PATHS = {
   opportunity: '/opportunite',
   /** Connexion réussie → tableau de bord (voir aussi adminPaths.js) */
   admin: '/admin',
-  product: (id) => `/produit/${encodeURIComponent(String(id))}`,
   blogArticle: (slug) => `/blog/${encodeURIComponent(slug)}`,
 }
 
@@ -63,10 +63,10 @@ export function parseStoreLocation(pathname, products) {
     }
   }
 
-  const prodMatch = matchPath({ path: '/produit/:id', end: true }, path)
-  if (prodMatch?.params?.id != null) {
-    const id = prodMatch.params.id
-    const product = products.find((p) => String(p.id) === String(id)) ?? null
+  const prodMatch = matchPath({ path: '/produit/:segment', end: true }, path)
+  if (prodMatch?.params?.segment != null) {
+    const segment = prodMatch.params.segment
+    const product = findProductByProduitPath(segment, products) ?? null
     return {
       storePage: 'product',
       blogSlug: null,
