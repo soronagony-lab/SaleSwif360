@@ -145,6 +145,9 @@ export function AdminPanel({ onLeave }) {
     businessLeads,
     patchBusinessLead,
     deleteBusinessLead,
+    remoteEnabled,
+    remoteLoading,
+    remoteError,
   } = useShop()
 
   const { config, setConfig } = useAdminConfig()
@@ -538,6 +541,28 @@ export function AdminPanel({ onLeave }) {
         </header>
 
         <div className="flex-1 overflow-auto p-4 md:p-8 bg-gray-50">
+          {remoteEnabled && remoteLoading && (
+            <div
+              className="mb-4 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-900"
+              role="status"
+            >
+              Synchronisation avec InsForge…
+            </div>
+          )}
+          {remoteEnabled && remoteError && !remoteLoading && (
+            <div
+              className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+              role="alert"
+            >
+              <p className="font-bold">Mode local (sync serveur indisponible)</p>
+              <p className="mt-1 leading-relaxed">{remoteError}</p>
+              <p className="mt-2 text-xs text-amber-900/90">
+                Les modifications sont enregistrées dans ce navigateur. Pour
+                partager les données entre appareils, corrigez la connexion
+                InsForge (CORS, URL, clé anon) puis rechargez la page.
+              </p>
+            </div>
+          )}
           {adminPage === 'dashboard' && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
@@ -2506,7 +2531,7 @@ export function AdminPanel({ onLeave }) {
           onDeleteLead={deleteBusinessLead}
         />
         <OrderDetailDialog
-          open={orderDialogId != null}
+          open={orderDialogId != null && orderForDialog != null}
           onOpenChange={(open) => {
             if (!open) setOrderDialogId(null)
           }}

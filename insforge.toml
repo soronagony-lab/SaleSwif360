@@ -1,0 +1,32 @@
+[auth]
+allowed_redirect_urls = [
+  "https://sale-swif360.vercel.app",
+  "https://sale-swif360.vercel.app/admin",
+  "https://sale-swif360.vercel.app/boutique",
+  "https://sale-swif360.vercel.app/blog",
+  "https://sale-swif360.vercel.app/opportunite",
+  "http://localhost:5173",
+  "http://localhost:5173/admin",
+  "http://localhost:5173/boutique",
+  "http://localhost:5173/blog",
+  "http://localhost:5173/opportunite",
+]
+require_email_verification = true
+verify_email_method = "code"
+reset_password_method = "code"
+
+[auth.password]
+min_length = 6
+require_number = false
+require_lowercase = false
+require_uppercase = false
+require_special_char = false
+
+[auth.smtp]
+enabled = false
+host = ""
+port = 465
+username = ""
+sender_email = ""
+sender_name = ""
+min_interval_seconds = 60

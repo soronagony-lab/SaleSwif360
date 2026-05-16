@@ -6,9 +6,9 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { flushSync } from 'react-dom'
 import { insforge } from '@/lib/insforgeClient'
 import { isAdminEmail } from '@/lib/adminAccess'
+import { resolveOAuthRedirectUrl } from '@/lib/oauthRedirect'
 
 const AuthContext = createContext(null)
 
@@ -19,22 +19,20 @@ export function AuthProvider({ children }) {
 
   const refreshSession = useCallback(async () => {
     if (!insforge) {
-      flushSync(() => setSession(null))
+      setSession(null)
       setLoading(false)
       return
     }
     try {
       const { data, error } = await insforge.auth.getCurrentUser()
       if (error) {
-        flushSync(() => setSession(null))
+        setSession(null)
         return
       }
       const u = data?.user ?? null
-      flushSync(() => {
-        setSession(u ? { user: u } : null)
-      })
+      setSession(u ? { user: u } : null)
     } catch {
-      flushSync(() => setSession(null))
+      setSession(null)
     } finally {
       setLoading(false)
     }
@@ -92,10 +90,7 @@ export function AuthProvider({ children }) {
 
   const signInWithGoogle = useCallback(async () => {
     if (!insforge) return { error: new Error('InsForge non configuré') }
-    const redirectTo =
-      typeof window !== 'undefined'
-        ? `${window.location.origin}${window.location.pathname}`
-        : undefined
+    const redirectTo = resolveOAuthRedirectUrl()
     return insforge.auth.signInWithOAuth({
       provider: 'google',
       redirectTo,

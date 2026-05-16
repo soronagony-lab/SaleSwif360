@@ -61,8 +61,13 @@ function formatShopSyncError(err) {
   ) {
     return 'Sync serveur : la clé anonyme ou l’URL InsForge ne correspond pas au projet. Dans le dashboard InsForge, copiez l’URL du backend et la clé publique « anon » (pas la clé secrète). Sur Vercel : Settings → Environment Variables → VITE_INSFORGE_URL (sans / à la fin) et VITE_INSFORGE_ANON_KEY, puis redéployez. Vérifiez les espaces en début/fin de clé.'
   }
+  if (
+    /cors|access-control|blocked by.*policy/i.test(lower)
+  ) {
+    return 'CORS InsForge : ajoutez l’URL de votre site (ex. https://sale-swif360.vercel.app) dans les origines autorisées du projet InsForge, puis redéployez. Les données restent en mode local (cache navigateur) tant que la sync est bloquée.'
+  }
   if (/failed to fetch|network|load failed|echec|econnrefused/i.test(lower)) {
-    return 'Impossible de joindre le serveur InsForge (réseau ou URL incorrecte). Vérifiez VITE_INSFORGE_URL et votre connexion.'
+    return 'Impossible de joindre le serveur InsForge (réseau, CORS ou URL incorrecte). Vérifiez VITE_INSFORGE_URL, les origines CORS sur InsForge et votre connexion.'
   }
   if (/relation|does not exist|42p01|pgrst205/i.test(lower)) {
     return 'Tables SQL manquantes côté InsForge. Exécutez le script insforge-shop-schema.sql sur votre base.'
@@ -111,12 +116,29 @@ export function ShopProvider({ children }) {
         if (cancelled) return
         skipPersistProducts.current = true
         skipPersistSettings.current = true
-        setProducts(p.length > 0 ? p : [])
-        setOrders(applyOrderExtrasToOrders(o))
-        setSettings(
-          normalizeShopSettingsFields({ ...defaultSettings, ...s })
+        const localProducts = loadJson(STORAGE_KEYS.products, initialProducts)
+        const localOrders = applyOrderExtrasToOrders(
+          loadJson(STORAGE_KEYS.orders, [])
         )
-        setBusinessLeads(Array.isArray(bl) ? bl : [])
+        const localLeads = loadJson(STORAGE_KEYS.businessLeads, [])
+        setProducts(
+          p.length > 0
+            ? p
+            : localProducts.length > 0
+              ? localProducts
+              : initialProducts
+        )
+        setOrders(o.length > 0 ? o : localOrders)
+        setSettings(
+          normalizeShopSettingsFields({
+            ...defaultSettings,
+            ...loadJson(STORAGE_KEYS.settings, {}),
+            ...s,
+          })
+        )
+        setBusinessLeads(
+          Array.isArray(bl) && bl.length > 0 ? bl : localLeads
+        )
         setRemoteError(null)
       } catch (e) {
         if (cancelled) return
@@ -163,7 +185,7 @@ export function ShopProvider({ children }) {
   }, [businessLeads])
 
   useEffect(() => {
-    if (!remoteEnabled || remoteLoading) return
+    if (!remoteEnabled || remoteLoading || remoteError) return
     if (skipPersistProducts.current) {
       skipPersistProducts.current = false
       return
@@ -183,10 +205,10 @@ export function ShopProvider({ children }) {
       }
     }, 900)
     return () => clearTimeout(t)
-  }, [products, remoteEnabled, remoteLoading])
+  }, [products, remoteEnabled, remoteLoading, remoteError])
 
   useEffect(() => {
-    if (!remoteEnabled || remoteLoading) return
+    if (!remoteEnabled || remoteLoading || remoteError) return
     if (skipPersistSettings.current) {
       skipPersistSettings.current = false
       return
@@ -199,7 +221,7 @@ export function ShopProvider({ children }) {
       }
     }, 700)
     return () => clearTimeout(t)
-  }, [settings, remoteEnabled, remoteLoading])
+  }, [settings, remoteEnabled, remoteLoading, remoteError])
 
   const updateSettings = useCallback((patch) => {
     setSettings((s) => ({ ...s, ...patch }))

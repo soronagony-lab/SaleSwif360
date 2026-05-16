@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "insforge": "insforge"
   },
   "dependencies": {
     "@insforge/sdk": "^1.2.2",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@insforge/cli": "^0.1.81",
     "@tailwindcss/vite": "^4.2.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
