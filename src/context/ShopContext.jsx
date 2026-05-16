@@ -274,18 +274,16 @@ export function ShopProvider({ children }) {
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, ...patch } : o))
     )
-    if (patch.status != null && insforgeShop) {
-      shopApi
-        .updateOrderStatusDb(insforgeShop, orderId, patch.status)
-        .catch((e) => {
-          console.error('updateOrderStatusDb', e)
-        })
+    if (insforgeShop) {
+      shopApi.updateOrderDb(insforgeShop, orderId, patch).catch((e) => {
+        console.error('updateOrderDb', e)
+      })
     }
     const extra = {}
     for (const k of EXTRA_ORDER_KEYS) {
       if (patch[k] !== undefined) extra[k] = patch[k]
     }
-    if (Object.keys(extra).length > 0) {
+    if (Object.keys(extra).length > 0 && !insforgeShop) {
       mergeOrderExtras(orderId, extra)
     }
   }, [])

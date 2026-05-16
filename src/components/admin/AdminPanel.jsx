@@ -158,7 +158,7 @@ export function AdminPanel({ onLeave }) {
     remoteError,
   } = useShop()
 
-  const { config, setConfig } = useAdminConfig()
+  const { config, setConfig, appendCampaignLog } = useAdminConfig()
 
   const handleLogout = async () => {
     await signOut()
@@ -301,19 +301,6 @@ export function AdminPanel({ onLeave }) {
   const leadForDialog = useMemo(
     () => businessLeads.find((l) => l.id === leadDialogId) ?? null,
     [businessLeads, leadDialogId]
-  )
-
-  const appendCampaignLog = useCallback(
-    (entry) => {
-      setConfig((c) => ({
-        ...c,
-        campaignLog: [
-          { ...entry, at: new Date().toISOString() },
-          ...(c.campaignLog || []),
-        ].slice(0, 100),
-      }))
-    },
-    [setConfig]
   )
 
   useEffect(() => {

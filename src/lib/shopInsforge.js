@@ -78,6 +78,9 @@ export function mapOrderRow(row) {
     city: row.city,
     address: row.address,
     status: row.status,
+    deliveryZoneId: row.delivery_zone_id ?? null,
+    courierId: row.courier_id ?? null,
+    internalNote: row.internal_note ?? '',
     date: created.toLocaleString('fr-FR'),
   }
 }
@@ -233,6 +236,26 @@ export async function updateOrderStatusDb(insforge, orderId, status) {
   const { error } = await insforge.database
     .from('orders')
     .update({ status })
+    .eq('id', orderId)
+  if (error) throw error
+}
+
+export async function updateOrderDb(insforge, orderId, patch) {
+  const row = {}
+  if (patch.status !== undefined) row.status = patch.status
+  if (patch.deliveryZoneId !== undefined) {
+    row.delivery_zone_id = patch.deliveryZoneId || null
+  }
+  if (patch.courierId !== undefined) {
+    row.courier_id = patch.courierId || null
+  }
+  if (patch.internalNote !== undefined) {
+    row.internal_note = patch.internalNote
+  }
+  if (Object.keys(row).length === 0) return
+  const { error } = await insforge.database
+    .from('orders')
+    .update(row)
     .eq('id', orderId)
   if (error) throw error
 }
