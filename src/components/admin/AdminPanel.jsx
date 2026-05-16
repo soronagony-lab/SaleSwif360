@@ -26,6 +26,8 @@ import {
   User,
   Users,
   Target,
+  Menu,
+  X,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useShop } from '@/context/ShopContext'
@@ -37,6 +39,12 @@ import { formatPrice, normalizePhoneForWhatsApp } from '@/lib/format'
 import { useAdminConfig } from '@/hooks/useAdminConfig'
 import { OrderDetailDialog } from '@/components/admin/OrderDetailDialog'
 import { LeadDetailDialog } from '@/components/admin/LeadDetailDialog'
+import {
+  AdminCustomerCard,
+  AdminMarketingClientCard,
+  AdminOrderCard,
+  OrderStatusSelect,
+} from '@/components/admin/adminMobileViews'
 import { ORDER_FOLLOW_UP_CATEGORIES } from '@/lib/orderFollowUpMessages'
 import { BRAND } from '@/lib/brand'
 import { LEAD_EXP_LABELS, LEAD_GOAL_LABELS } from '@/lib/leadLabels'
@@ -78,7 +86,7 @@ function AdminNavLink({ icon, label, active, onClick, badge }) {
       <span className={`shrink-0 ${active ? 'text-orange-400' : ''}`}>
         {icon}
       </span>
-      <span className="text-[11px] sm:text-xs md:text-sm leading-tight text-left flex-1 min-w-0 md:block">
+      <span className="text-xs sm:text-sm leading-tight text-left flex-1 min-w-0">
         {label}
       </span>
       {badge !== undefined && badge > 0 && (
@@ -182,6 +190,11 @@ export function AdminPanel({ onLeave }) {
     email: '',
     role: 'Service client',
   })
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
+  useEffect(() => {
+    setMobileNavOpen(false)
+  }, [location.pathname])
 
   const totalRevenue = orders
     .filter((o) => o.status === 'Livrée')
@@ -425,68 +438,124 @@ export function AdminPanel({ onLeave }) {
           settings: 'Configuration',
         }[adminPage] || ''
 
+  const goAdminPage = (page) => {
+    navigate(pathForAdminPage(page))
+    setMobileNavOpen(false)
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row font-sans">
-      <aside className="bg-teal-900 text-teal-100 w-full md:w-64 shrink-0 flex flex-col shadow-2xl z-20">
-        <div className="h-16 flex items-center px-4 md:px-6 bg-teal-950 text-white border-b border-teal-800">
-          <ShoppingBag className="h-6 w-6 mr-3 text-orange-500 shrink-0" />
-          <span className="font-bold text-lg md:text-xl tracking-tight truncate">
-            {settings.shopName}
-          </span>
+      {mobileNavOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-black/50 md:hidden border-0 cursor-pointer"
+          aria-label="Fermer le menu"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
+      <aside
+        className={`bg-teal-900 text-teal-100 shrink-0 flex flex-col shadow-2xl z-50 md:z-20
+          fixed inset-y-0 left-0 w-[min(100%,18rem)] max-w-[85vw] transform transition-transform duration-200 md:relative md:translate-x-0 md:w-64
+          ${mobileNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+      >
+        <div className="h-16 flex items-center justify-between px-4 md:px-6 bg-teal-950 text-white border-b border-teal-800 shrink-0">
+          <div className="flex items-center min-w-0">
+            <ShoppingBag className="h-6 w-6 mr-3 text-orange-500 shrink-0" />
+            <span className="font-bold text-lg md:text-xl tracking-tight truncate">
+              {settings.shopName}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center text-teal-200 hover:text-white border-0 bg-transparent cursor-pointer"
+            aria-label="Fermer le menu"
+            onClick={() => setMobileNavOpen(false)}
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
-        <nav className="flex-1 py-3 md:py-4 px-2 md:px-4 flex flex-row md:flex-col gap-1 md:gap-2 overflow-x-auto md:overflow-y-auto pb-2">
+        <nav className="flex-1 py-3 px-3 flex flex-col gap-1 overflow-y-auto overscroll-contain">
           <AdminNavLink
             icon={<LayoutDashboard className="w-5 h-5" />}
             label="Tableau de bord"
             active={adminPage === 'dashboard'}
-            onClick={() => navigate(pathForAdminPage('dashboard'))}
+            onClick={() => goAdminPage('dashboard')}
           />
           <AdminNavLink
             icon={<ShoppingCart className="w-5 h-5" />}
             label="Commandes"
             active={adminPage === 'orders'}
-            onClick={() => navigate(pathForAdminPage('orders'))}
+            onClick={() => goAdminPage('orders')}
             badge={orders.length}
           />
           <AdminNavLink
             icon={<Package className="w-5 h-5" />}
             label="Produits"
             active={adminPage === 'products'}
-            onClick={() => navigate(pathForAdminPage('products'))}
+            onClick={() => goAdminPage('products')}
           />
           <AdminNavLink
             icon={<Users className="w-5 h-5" />}
             label="Clients"
             active={adminPage === 'customers'}
-            onClick={() => navigate(pathForAdminPage('customers'))}
+            onClick={() => goAdminPage('customers')}
           />
           <AdminNavLink
             icon={<Target className="w-5 h-5" />}
             label="Prospection"
             active={adminPage === 'leads'}
-            onClick={() => navigate(pathForAdminPage('leads'))}
+            onClick={() => goAdminPage('leads')}
             badge={newLeadsCount}
           />
           <AdminNavLink
             icon={<Megaphone className="w-5 h-5" />}
             label="Marketing"
             active={adminPage === 'marketing'}
-            onClick={() => navigate(pathForAdminPage('marketing'))}
+            onClick={() => goAdminPage('marketing')}
           />
           <AdminNavLink
             icon={<Truck className="w-5 h-5" />}
             label="Logistique"
             active={adminPage === 'logistics'}
-            onClick={() => navigate(pathForAdminPage('logistics'))}
+            onClick={() => goAdminPage('logistics')}
           />
           <AdminNavLink
             icon={<Settings className="w-5 h-5" />}
             label="Configuration"
             active={adminPage === 'settings'}
-            onClick={() => navigate(pathForAdminPage('settings'))}
+            onClick={() => goAdminPage('settings')}
           />
         </nav>
-        <div className="p-4 border-t border-teal-800 hidden md:block space-y-2">
+        <div className="p-4 border-t border-teal-800 space-y-2 shrink-0">
+          {user?.email && (
+            <p
+              className="text-xs text-teal-400/90 px-2 truncate md:hidden"
+              title={user.email}
+            >
+              {user.email}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setMobileNavOpen(false)
+              onLeave()
+            }}
+            className="flex md:hidden items-center text-teal-300 hover:text-white transition w-full p-3 rounded-xl hover:bg-teal-800 font-medium border-0 bg-transparent cursor-pointer min-h-[44px]"
+          >
+            <ExternalLink className="w-5 h-5 mr-3 shrink-0" /> Voir la boutique
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMobileNavOpen(false)
+              handleLogout()
+            }}
+            className="flex md:hidden items-center text-teal-300 hover:text-white transition w-full p-3 rounded-xl hover:bg-teal-800 font-medium border-0 bg-transparent cursor-pointer min-h-[44px]"
+          >
+            <LogOut className="w-5 h-5 mr-3 shrink-0" /> Déconnexion
+          </button>
+          <div className="hidden md:block space-y-2">
           {user?.email && (
             <p className="text-xs text-teal-400/90 px-2 truncate" title={user.email}>
               {user.email}
@@ -502,22 +571,34 @@ export function AdminPanel({ onLeave }) {
           <button
             type="button"
             onClick={handleLogout}
-            className="flex items-center text-teal-300 hover:text-white transition w-full p-3 rounded-xl hover:bg-teal-800 font-medium border-0 bg-transparent cursor-pointer"
+            className="flex items-center text-teal-300 hover:text-white transition w-full p-3 rounded-xl hover:bg-teal-800 font-medium border-0 bg-transparent cursor-pointer min-h-[44px]"
           >
             <LogOut className="w-5 h-5 mr-3" /> Déconnexion
           </button>
+          </div>
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-h-0 md:h-screen overflow-hidden">
-        <header className="bg-white h-16 border-b flex items-center justify-between px-4 md:px-8 shrink-0 shadow-sm z-10">
-          <h1 className="text-lg md:text-xl font-bold text-gray-800 truncate pr-2">
-            {adminTitle}
-          </h1>
-          <div className="flex items-center gap-3 shrink-0">
+      <main className="flex-1 flex flex-col min-h-0 min-w-0 md:h-screen overflow-hidden">
+        <header className="bg-white h-16 border-b flex items-center justify-between px-4 md:px-8 shrink-0 shadow-sm z-10 gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden shrink-0 min-h-[44px] min-w-[44px]"
+              aria-label="Menu administration"
+              onClick={() => setMobileNavOpen(true)}
+            >
+              <Menu className="w-5 h-5" />
+            </Button>
+            <h1 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 truncate">
+              {adminTitle}
+            </h1>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Button
               variant="outline"
-              className="md:hidden rounded-lg text-sm"
+              className="md:hidden rounded-lg text-sm min-h-[44px]"
               onClick={onLeave}
             >
               Boutique
@@ -525,7 +606,7 @@ export function AdminPanel({ onLeave }) {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden text-gray-600"
+              className="md:hidden text-gray-600 min-h-[44px] min-w-[44px]"
               onClick={handleLogout}
               aria-label="Déconnexion"
             >
@@ -634,8 +715,24 @@ export function AdminPanel({ onLeave }) {
                       En attente de la première commande…
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left min-w-[480px]">
+                    <>
+                    <div className="md:hidden p-4 space-y-3">
+                      {orders.slice(0, 5).map((o) => (
+                        <div
+                          key={`dash-m-${o.id}`}
+                          className="flex justify-between gap-3 py-2 border-b border-gray-100 last:border-0"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-bold text-gray-900 truncate">{o.customerName}</p>
+                            <p className="text-xs text-gray-500">{o.date}</p>
+                            <p className="text-sm text-gray-600 truncate">{o.productName}</p>
+                          </div>
+                          <p className="font-black text-orange-500 shrink-0">{formatPrice(o.price)}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full text-left">
                         <tbody className="text-sm divide-y divide-gray-100">
                           {orders.slice(0, 5).map((o) => (
                             <tr key={o.id} className="hover:bg-gray-50">
@@ -658,6 +755,7 @@ export function AdminPanel({ onLeave }) {
                         </tbody>
                       </table>
                     </div>
+                    </>
                   )}
                 </div>
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -703,8 +801,29 @@ export function AdminPanel({ onLeave }) {
                   {orders.length} au total
                 </span>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[900px]">
+              <div className="md:hidden p-4 space-y-3 bg-gray-50/50">
+                {orders.length === 0 && (
+                  <p className="text-center text-gray-500 py-8">
+                    Aucune commande reçue.
+                  </p>
+                )}
+                {orders.map((o) => (
+                  <AdminOrderCard
+                    key={`m-${o.id}`}
+                    order={o}
+                    onView={setOrderDialogId}
+                    onDelete={(id) => {
+                      if (window.confirm('Supprimer cette commande ?')) {
+                        deleteOrder(id)
+                      }
+                    }}
+                    onStatusChange={updateOrderStatus}
+                    getWhatsAppLink={getWhatsAppLink}
+                  />
+                ))}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-white text-gray-400 text-xs uppercase tracking-wider border-b border-gray-200">
                       <th className="p-4 font-bold">Réf / date</th>
@@ -1016,7 +1135,7 @@ export function AdminPanel({ onLeave }) {
                 <h3 className="font-bold text-gray-800 text-lg mb-4">
                   Produits en ligne ({products.length})
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                   {products.map((p) => (
                     <div
                       key={p.id}
@@ -1112,8 +1231,8 @@ export function AdminPanel({ onLeave }) {
                     {customerAggregates.length} total
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-2 items-end">
-                  <div className="flex-1 min-w-[160px]">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 items-stretch sm:items-end">
+                  <div className="w-full sm:flex-1 sm:min-w-[140px]">
                     <Label className="mb-1 block text-xs">Recherche</Label>
                     <Input
                       value={customerSearch}
@@ -1122,7 +1241,7 @@ export function AdminPanel({ onLeave }) {
                       className="h-10"
                     />
                   </div>
-                  <div className="min-w-[140px]">
+                  <div className="w-full sm:w-auto sm:min-w-[140px]">
                     <Label className="mb-1 block text-xs">Ville</Label>
                     <select
                       value={customerCityFilter}
@@ -1137,7 +1256,7 @@ export function AdminPanel({ onLeave }) {
                       ))}
                     </select>
                   </div>
-                  <div className="min-w-[160px]">
+                  <div className="w-full sm:w-auto sm:min-w-[140px]">
                     <Label className="mb-1 block text-xs">Tri</Label>
                     <select
                       value={customerSort}
@@ -1186,8 +1305,18 @@ export function AdminPanel({ onLeave }) {
                   </Button>
                 </div>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left min-w-[720px]">
+              <div className="md:hidden p-4 space-y-3 bg-gray-50/30">
+                {filteredCustomers.length === 0 && (
+                  <p className="text-center text-gray-500 py-8">
+                    Aucun client ne correspond aux filtres.
+                  </p>
+                )}
+                {filteredCustomers.map((c) => (
+                  <AdminCustomerCard key={c.key} customer={c} />
+                ))}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left">
                   <thead>
                     <tr className="bg-white text-gray-400 text-xs uppercase tracking-wider border-b border-gray-200">
                       <th className="p-4 font-bold">Client</th>
@@ -1369,7 +1498,7 @@ export function AdminPanel({ onLeave }) {
 
               <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left min-w-[800px]">
+                  <table className="w-full text-left">
                     <thead>
                       <tr className="bg-gray-50 text-gray-500 text-xs uppercase border-b border-gray-200">
                         <th className="p-3 font-bold">Date</th>
@@ -1596,8 +1725,8 @@ export function AdminPanel({ onLeave }) {
                     ))}
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-3 items-end mb-4 p-4 bg-teal-50/50 rounded-2xl border border-teal-100">
-                  <div className="flex-1 min-w-[200px]">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-end mb-4 p-4 bg-teal-50/50 rounded-2xl border border-teal-100">
+                  <div className="w-full sm:flex-1 sm:min-w-[200px]">
                     <Label className="mb-1 block text-xs">Modèle pour la liste</Label>
                     <select
                       value={marketingTemplateId}
@@ -1614,7 +1743,7 @@ export function AdminPanel({ onLeave }) {
                   <Button
                     type="button"
                     variant="accent"
-                    className="rounded-xl"
+                    className="rounded-xl w-full sm:w-auto min-h-[44px]"
                     onClick={runBulkWhatsApp}
                   >
                     Envoi groupé (sélection)
@@ -1622,7 +1751,7 @@ export function AdminPanel({ onLeave }) {
                   <Button
                     type="button"
                     variant="outline"
-                    className="rounded-xl"
+                    className="rounded-xl w-full sm:w-auto min-h-[44px]"
                     onClick={() => {
                       if (marketingSelected.size === customerAggregates.length) {
                         setMarketingSelected(new Set())
@@ -1636,8 +1765,44 @@ export function AdminPanel({ onLeave }) {
                     Tout sélectionner / désélectionner
                   </Button>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left min-w-[520px]">
+                <div className="md:hidden space-y-3 px-1">
+                  {customerAggregates.length === 0 && (
+                    <p className="text-center text-gray-500 py-6">
+                      Aucun client à relancer.
+                    </p>
+                  )}
+                  {customerAggregates.map((c) => {
+                    const tpl = config.whatsappTemplates?.find(
+                      (t) => t.id === marketingTemplateId
+                    )
+                    const body = tpl
+                      ? interpolateWaTemplate(
+                          tpl.body,
+                          { ...c, lastProduct: c.lastProduct },
+                          settings.shopName
+                        )
+                      : settings.relanceMessage
+                    const href = `https://wa.me/${normalizePhoneForWhatsApp(c.phone)}?text=${encodeURIComponent(body)}`
+                    return (
+                      <AdminMarketingClientCard
+                        key={`mk-${c.key}`}
+                        customer={c}
+                        checked={marketingSelected.has(c.key)}
+                        onToggle={() => toggleMarketingRow(c.key)}
+                        href={href}
+                        onRelanceClick={() =>
+                          appendCampaignLog({
+                            mode: 'single',
+                            templateId: tpl?.id,
+                            phone: c.phone,
+                          })
+                        }
+                      />
+                    )
+                  })}
+                </div>
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left">
                     <thead>
                       <tr className="bg-white text-gray-400 text-xs uppercase tracking-wider border-b border-gray-200">
                         <th className="p-3 w-10" aria-label="Sélection" />

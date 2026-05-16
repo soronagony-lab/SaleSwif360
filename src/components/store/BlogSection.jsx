@@ -49,7 +49,7 @@ export function BlogList({
           <Sparkles className="w-6 h-6 text-amber-500" />
           Produits & bien-être
         </h2>
-        <ul className="grid gap-4 md:grid-cols-2">
+        <ul className="grid gap-4 sm:grid-cols-2">
           {productArts.map((a) => (
             <li key={a.slug}>
               <button
@@ -75,7 +75,7 @@ export function BlogList({
           <Users className="w-6 h-6 text-amber-500" />
           Business & opportunité
         </h2>
-        <ul className="grid gap-4 md:grid-cols-2">
+        <ul className="grid gap-4 sm:grid-cols-2">
           {businessArts.map((a) => (
             <li key={a.slug}>
               <button

@@ -90,7 +90,7 @@ export function OrderModal({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
         showClose={!success}
-        className="max-w-md gap-0 overflow-hidden rounded-[1.75rem] border-0 p-0 shadow-[0_25px_80px_-12px_rgba(13,148,136,0.35)]"
+        className="max-w-[min(28rem,calc(100vw-1.5rem))] gap-0 overflow-hidden rounded-[1.75rem] border-0 p-0 shadow-[0_25px_80px_-12px_rgba(13,148,136,0.35)]"
       >
         {success ? (
           <div className="flex flex-col items-center bg-gradient-to-b from-emerald-50/90 to-white px-8 py-10 text-center">
@@ -179,7 +179,7 @@ export function OrderModal({
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <Label className="mb-1.5 block">Ville / Commune</Label>
                     <Input

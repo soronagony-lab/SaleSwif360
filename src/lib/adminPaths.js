@@ -46,3 +46,6 @@ export function parseAdminPath(pathname) {
 export function pathForAdminPage(page) {
   return PAGE_TO_PATH[page] ?? '/admin'
 }
+
+/** Chemins admin pour OAuth / allowed_redirect_urls InsForge */
+export const ALL_ADMIN_PATHS = Object.values(PAGE_TO_PATH)

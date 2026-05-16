@@ -309,7 +309,7 @@ export function StoreFront() {
                 alt="Produits bien-être et nature"
                 className="w-full h-64 md:h-[28rem] object-cover object-center"
               />
-              <div className="absolute inset-0 z-20 flex flex-col justify-center px-6 md:px-14 max-w-2xl">
+              <div className="absolute inset-0 z-20 flex flex-col justify-center px-4 sm:px-6 md:px-14 max-w-2xl w-full">
                 <span className="inline-flex items-center gap-2 bg-amber-500/95 text-emerald-950 text-xs font-bold px-3 py-1.5 rounded-full w-max mb-4 uppercase tracking-wider shadow">
                   <Sparkles className="w-3.5 h-3.5" aria-hidden />
                   {BRAND.hero.badge}
@@ -324,14 +324,14 @@ export function StoreFront() {
                   <button
                     type="button"
                     onClick={() => navigate(PATHS.catalog)}
-                    className="bg-amber-500 text-emerald-950 font-bold py-3.5 px-8 rounded-full w-max hover:bg-amber-400 transition shadow-lg text-base border-0 cursor-pointer"
+                    className="bg-amber-500 text-emerald-950 font-bold py-3.5 px-8 rounded-full w-full sm:w-max hover:bg-amber-400 transition shadow-lg text-base border-0 cursor-pointer text-center"
                   >
                     {BRAND.ctaShop}
                   </button>
                   <button
                     type="button"
                     onClick={() => navigate(PATHS.opportunity)}
-                    className="text-white font-semibold py-3 px-6 rounded-full border-2 border-white/40 hover:bg-white/10 transition w-max sm:w-auto text-sm md:text-base"
+                    className="text-white font-semibold py-3 px-6 rounded-full border-2 border-white/40 hover:bg-white/10 transition w-full sm:w-max text-sm md:text-base text-center"
                   >
                     {BRAND.ctaOpportunity}
                   </button>
@@ -360,7 +360,7 @@ export function StoreFront() {
               <p className="text-stone-600 text-sm mb-6 max-w-2xl">
                 {BRAND.salesPitch}
               </p>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                 {popularProducts.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -540,7 +540,7 @@ export function StoreFront() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
               {filteredCatalog.map((product) => (
                 <ProductCard
                   key={product.id}
@@ -646,7 +646,7 @@ function StoreProductDetailView({ product, onBack, onOrder }) {
       <button
         type="button"
         onClick={onBack}
-        className="flex items-center text-emerald-800 hover:text-emerald-950 mb-4 font-medium bg-emerald-50 px-3 py-1.5 rounded-lg w-max border-0 cursor-pointer"
+        className="flex items-center text-emerald-800 hover:text-emerald-950 mb-4 font-medium bg-emerald-50 px-3 py-2 min-h-[44px] rounded-lg w-max border-0 cursor-pointer"
       >
         <ChevronLeft className="w-5 h-5 mr-1" /> Retour
       </button>
